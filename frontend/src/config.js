@@ -2,9 +2,9 @@
 // This handles both development and production environments
 
 const getApiUrl = () => {
-  // In Create React App, environment variables must be prefixed with REACT_APP_
-  // and are embedded at build time
-  const envApiUrl = typeof process !== 'undefined' && process.env?.REACT_APP_API_URL;
+  // In Vite, environment variables must be prefixed with VITE_
+  // and are available via import.meta.env
+  const envApiUrl = import.meta.env.VITE_API_URL;
   
   if (envApiUrl) {
     return envApiUrl;
@@ -15,8 +15,8 @@ const getApiUrl = () => {
                        window.location.hostname !== '127.0.0.1';
   
   if (isProduction) {
-    // In production, use the same origin with /api path
-    return window.location.origin + '/api';
+    // In production, use the Render backend URL
+    return 'https://student-portal-1-ou9o.onrender.com/api';
   }
   
   // Default to localhost for development
