@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, ExternalLink, X, Save, Loader, LogOut, Clock } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import config from "../../config";
 
 const API_URL = config.apiUrl;
 
 export default function TrainerDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState({ totalBatches: 0, totalClasses: 0, todayClasses: 0, upcomingClasses: 0 });
   const [loading, setLoading] = useState(false);
@@ -87,6 +89,7 @@ export default function TrainerDashboard() {
 
   const handleLogout = () => {
     logout();
+    navigate("/login", { replace: true });
   };
 
   const handleCreateClass = () => {

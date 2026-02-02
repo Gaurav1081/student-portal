@@ -114,7 +114,7 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private/Trainer or Admin
 router.post('/', protect, trainerOrAdmin, async (req, res) => {
   try {
-    const { className, batch, trainer, date, startTime, endTime, teamsLink, description } = req.body;
+    const { className, batch, trainer, date, startTime, endTime, teamsLink, description, recordingLink } = req.body;
 
     // If user is a trainer, they can only create classes for themselves
     const finalTrainer = req.user.role === 'trainer' ? req.user._id : trainer;
@@ -128,6 +128,7 @@ router.post('/', protect, trainerOrAdmin, async (req, res) => {
       endTime,
       teamsLink,
       description,
+      recordingLink: recordingLink || '',
     });
 
     const populatedClass = await Class.findById(classItem._id)
@@ -156,10 +157,16 @@ router.put('/:id', protect, trainerOrAdmin, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this class' });
     }
 
-    const { className, batch, date, startTime, endTime, teamsLink, recordingLink, status, description } = req.body;
+    const { className, batch, trainer, date, startTime, endTime, teamsLink, recordingLink, status, description } = req.body;
 
     classItem.className = className || classItem.className;
     classItem.batch = batch || classItem.batch;
+    
+    // Only admins can change the trainer
+    if (req.user.role === 'admin' && trainer) {
+      classItem.trainer = trainer;
+    }
+    
     classItem.date = date || classItem.date;
     classItem.startTime = startTime || classItem.startTime;
     classItem.endTime = endTime || classItem.endTime;

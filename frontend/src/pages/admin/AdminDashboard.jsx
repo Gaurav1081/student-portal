@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus } from "lucide-react";
+import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import config from "../../config";
 
 const API_URL = config.apiUrl;
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState({ totalUsers: 0, totalBatches: 0, totalClasses: 0, activeClasses: 0 });
+  const [stats, setStats] = useState({ totalUsers: 0, totalBatches: 0, totalClasses: 0, activeClasses: 0, totalTrainers: 0 });
   const [loading, setLoading] = useState(false);
   const [batches, setBatches] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -16,6 +18,7 @@ export default function AdminDashboard() {
   const [trainers, setTrainers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [selectedStudents, setSelectedStudents] = useState([]);
@@ -71,6 +74,7 @@ export default function AdminDashboard() {
         totalBatches: batchesData?.length || 0,
         totalClasses: classesData?.length || 0,
         activeClasses: activeClasses,
+        totalTrainers: trainersData?.length || 0,
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -81,8 +85,8 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
+    logout();
+    navigate("/login", { replace: true });
   };
 
   const handleCreateBatch = () => {
@@ -165,7 +169,7 @@ export default function AdminDashboard() {
   const handleCreateClass = () => {
     setModalType("class");
     setSelectedItem(null);
-    setFormData({ className: "", batch: "", trainer: "", startTime: "", endTime: "", teamsLink: "", description: "", status: "scheduled" });
+    setFormData({ className: "", batch: "", trainer: "", startTime: "", endTime: "", teamsLink: "", description: "", status: "scheduled", recordingLink: "" });
     setError("");
     setSearchQuery("");
     setShowModal(true);
@@ -380,9 +384,150 @@ export default function AdminDashboard() {
     setSelectedStudents(prev => prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]);
   };
 
+  // Trainer Management Functions
+  const handleCreateTrainer = () => {
+    setModalType("trainer");
+    setSelectedItem(null);
+    setFormData({ name: "", email: "", password: "", subject: "", phone: "" });
+    setError("");
+    setShowPassword(false);
+    setShowModal(true);
+  };
+
+  const handleEditTrainer = (trainer) => {
+    setModalType("editTrainer");
+    setSelectedItem(trainer);
+    setFormData({
+      name: trainer.name || "",
+      email: trainer.email || "",
+      subject: trainer.subject || "",
+      phone: trainer.phone || ""
+    });
+    setError("");
+    setShowModal(true);
+  };
+
+  const handleSaveTrainer = async () => {
+    setSubmitting(true);
+    setError("");
+    
+    if (!formData.name || !formData.email) {
+      setError("Name and email are required");
+      setSubmitting(false);
+      return;
+    }
+
+    if (!selectedItem && !formData.password) {
+      setError("Password is required for new trainers");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const headers = getAuthHeaders();
+      const response = await fetch(`${API_URL}/users/register`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: "trainer",
+          subject: formData.subject,
+          phone: formData.phone
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create trainer');
+      }
+
+      setShowModal(false);
+      setError("");
+      alert("Trainer created successfully!");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error creating trainer:", error);
+      setError(error.message || "Failed to create trainer");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdateTrainer = async () => {
+    setSubmitting(true);
+    setError("");
+    
+    if (!formData.name || !formData.email) {
+      setError("Name and email are required");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const headers = getAuthHeaders();
+      const response = await fetch(`${API_URL}/users/${selectedItem._id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          phone: formData.phone
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update trainer');
+      }
+
+      setShowModal(false);
+      setError("");
+      alert("Trainer updated successfully!");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error updating trainer:", error);
+      setError(error.message || "Failed to update trainer");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTrainer = async (trainerId) => {
+    if (!window.confirm("Are you sure you want to delete this trainer?")) return;
+    
+    try {
+      const headers = getAuthHeaders();
+      const response = await fetch(`${API_URL}/users/${trainerId}`, { 
+        method: 'DELETE', 
+        headers 
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete trainer');
+      }
+      
+      alert("Trainer deleted successfully!");
+      fetchDashboardData();
+    } catch (error) {
+      console.error("Error deleting trainer:", error);
+      alert(error.message || "Failed to delete trainer");
+    }
+  };
+
   const filteredStudents = students.filter(student => {
     const query = searchQuery.toLowerCase();
     return student.name.toLowerCase().includes(query) || student.email.toLowerCase().includes(query);
+  });
+
+  const filteredTrainers = trainers.filter(trainer => {
+    const query = searchQuery.toLowerCase();
+    return trainer.name.toLowerCase().includes(query) || 
+           trainer.email.toLowerCase().includes(query) ||
+           (trainer.subject && trainer.subject.toLowerCase().includes(query));
   });
 
   const formatDate = (dateString) => {
@@ -399,6 +544,12 @@ export default function AdminDashboard() {
       color: "from-black via-zinc-900 to-zinc-700"
     },
     {
+      label: "Total Trainers",
+      value: stats.totalTrainers,
+      icon: GraduationCap,
+      color: "from-black via-zinc-900 to-zinc-700"
+    },
+    {
       label: "Total Batches",
       value: stats.totalBatches,
       icon: BookOpen,
@@ -408,12 +559,6 @@ export default function AdminDashboard() {
       label: "Total Classes",
       value: stats.totalClasses,
       icon: Video,
-      color: "from-black via-zinc-900 to-zinc-700"
-    },
-    {
-      label: "Active Classes",
-      value: stats.activeClasses,
-      icon: Calendar,
       color: "from-black via-zinc-900 to-zinc-700"
     },
   ];
@@ -497,7 +642,7 @@ export default function AdminDashboard() {
       <div className="bg-white border-b-2 border-black">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex space-x-8">
-            {["overview", "batches", "classes", "students"].map((tab) => (
+            {["overview", "batches", "classes", "trainers", "students"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -703,6 +848,73 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeTab === "trainers" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="barlow text-xl font-semibold text-black">Manage Trainers</h3>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search trainers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="barlow pl-10 pr-4 py-2 border-2 border-black rounded-lg text-black bg-white text-sm"
+                  />
+                </div>
+                <button onClick={handleCreateTrainer} className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800">
+                  <Plus size={20} /><span>Add Trainer</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {filteredTrainers.length > 0 ? filteredTrainers.map((trainer) => (
+                <div key={trainer._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-black via-zinc-900 to-zinc-700 flex items-center justify-center">
+                          <GraduationCap className="text-white" size={24} />
+                        </div>
+                        <div>
+                          <h4 className="barlow text-lg font-semibold text-black">{trainer.name}</h4>
+                          <p className="barlow text-sm text-black">{trainer.email}</p>
+                        </div>
+                      </div>
+                      <div className="barlow flex items-center space-x-4 mt-3 text-sm text-black">
+                        {trainer.subject && (
+                          <>
+                            <span>Subject: {trainer.subject}</span>
+                            {trainer.phone && <span>•</span>}
+                          </>
+                        )}
+                        {trainer.phone && <span>Phone: {trainer.phone}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button onClick={() => handleEditTrainer(trainer)} className="p-2 text-black hover:bg-gray-100 rounded-lg border border-black" title="Edit Trainer">
+                        <Edit2 size={18} />
+                      </button>
+                      <button onClick={() => handleDeleteTrainer(trainer._id)} className="p-2 text-white bg-black hover:bg-gray-800 rounded-lg" title="Delete Trainer">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className="bg-white rounded-xl p-12 text-center border-2 border-black">
+                  <GraduationCap className="mx-auto h-12 w-12 text-black mb-4" />
+                  <p className="barlow text-black">
+                    {searchQuery ? "No trainers match your search" : "No trainers added yet"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === "students" && (
           <div className="space-y-6">
             <h3 className="barlow text-xl font-semibold text-black">Student Management</h3>
@@ -773,6 +985,7 @@ export default function AdminDashboard() {
         )}
       </div>
 
+      {/* Batch Modal */}
       {showModal && modalType === "batch" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-black">
@@ -825,6 +1038,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Add Student Modal */}
       {showModal && modalType === "addStudent" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full border-2 border-black">
@@ -846,8 +1060,22 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <label className="barlow block text-sm font-medium text-black mb-1">Password *</label>
-                <input type="password" value={formData.password || ""} onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="Enter password" />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={formData.password || ""} 
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white pr-10" 
+                    placeholder="Enter password" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-black"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <button onClick={() => setShowModal(false)} disabled={submitting}
@@ -862,6 +1090,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Class Modal */}
       {showModal && modalType === "class" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-black">
@@ -911,23 +1140,21 @@ export default function AdminDashboard() {
                 <input type="url" value={formData.teamsLink || ""} onChange={(e) => setFormData({...formData, teamsLink: e.target.value})}
                   className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="https://teams.microsoft.com/..." />
               </div>
+              <div>
+                <label className="barlow block text-sm font-medium text-black mb-1">Recording Link</label>
+                <input type="url" value={formData.recordingLink || ""} onChange={(e) => setFormData({...formData, recordingLink: e.target.value})}
+                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="https://..." />
+              </div>
               {selectedItem && (
-                <>
-                  <div>
-                    <label className="barlow block text-sm font-medium text-black mb-1">Recording Link</label>
-                    <input type="url" value={formData.recordingLink || ""} onChange={(e) => setFormData({...formData, recordingLink: e.target.value})}
-                      className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="https://..." />
-                  </div>
-                  <div>
-                    <label className="barlow block text-sm font-medium text-black mb-1">Status</label>
-                    <select value={formData.status || ""} onChange={(e) => setFormData({...formData, status: e.target.value})}
-                      className="barlow w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black">
-                      <option value="scheduled">Scheduled</option>
-                      <option value="ongoing">Ongoing</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
-                </>
+                <div>
+                  <label className="barlow block text-sm font-medium text-black mb-1">Status</label>
+                  <select value={formData.status || ""} onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black">
+                    <option value="scheduled">Scheduled</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
               )}
               <div>
                 <label className="barlow block text-sm font-medium text-black mb-1">Description</label>
@@ -947,6 +1174,75 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Add/Edit Trainer Modal */}
+      {showModal && (modalType === "trainer" || modalType === "editTrainer") && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full border-2 border-black">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="barlow text-xl font-semibold text-black">
+                {modalType === "editTrainer" ? "Edit Trainer" : "Add New Trainer"}
+              </h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+            </div>
+            {error && <div className="barlow mb-4 p-3 bg-black text-white rounded-lg text-sm">{error}</div>}
+            <div className="space-y-4">
+              <div>
+                <label className="barlow block text-sm font-medium text-black mb-1">Name *</label>
+                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., Jane Smith" />
+              </div>
+              <div>
+                <label className="barlow block text-sm font-medium text-black mb-1">Email *</label>
+                <input type="email" value={formData.email || ""} onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="trainer@example.com" />
+              </div>
+              {modalType === "trainer" && (
+                <div>
+                  <label className="barlow block text-sm font-medium text-black mb-1">Password *</label>
+                  <div className="relative">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      value={formData.password || ""} 
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white pr-10" 
+                      placeholder="Enter password" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-black"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="barlow block text-sm font-medium text-black mb-1">Subject/Specialization</label>
+                <input type="text" value={formData.subject || ""} onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., Visual Effects, Animation" />
+              </div>
+              <div>
+                <label className="barlow block text-sm font-medium text-black mb-1">Phone Number</label>
+                <input type="tel" value={formData.phone || ""} onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., +1 234 567 8900" />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button onClick={() => setShowModal(false)} disabled={submitting}
+                  className="barlow px-4 py-2 border-2 border-black rounded-lg text-black hover:bg-gray-50">Cancel</button>
+                <button 
+                  onClick={modalType === "editTrainer" ? handleUpdateTrainer : handleSaveTrainer} 
+                  disabled={submitting}
+                  className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50">
+                  {submitting ? <><Loader className="animate-spin" size={18} /><span>{modalType === "editTrainer" ? "Updating..." : "Creating..."}</span></> : <><Save size={18} /><span>{modalType === "editTrainer" ? "Update" : "Create"}</span></>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Students Modal */}
       {showModal && modalType === "assign" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-black">

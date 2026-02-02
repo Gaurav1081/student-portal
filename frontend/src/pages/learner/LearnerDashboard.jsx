@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { BookOpen, Video, Calendar, Users, ExternalLink, LogOut, Settings, Clock, PlayCircle, CheckCircle, Loader } from "lucide-react";
+import { BookOpen, Video, Calendar, Users, ExternalLink, LogOut, Settings, Clock, PlayCircle, CheckCircle, Loader, AlertCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import config from "../../config";
 
 const API_URL = config.apiUrl;
 
 export default function LearnerDashboard() {
   const { user, logout, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(false);
   const [batches, setBatches] = useState([]);
@@ -111,7 +113,7 @@ export default function LearnerDashboard() {
 
   const handleLogout = () => {
     logout();
-    window.location.href = "/login";
+    navigate("/login", { replace: true });
   };
 
   const formatDate = (dateString) => {
@@ -142,6 +144,36 @@ export default function LearnerDashboard() {
     }
   };
 
+  // Check if any of the student's batches are still active
+  const hasActiveBatch = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return batches.some(batch => {
+      if (!batch.endDate) return true; // If no end date, batch is considered active
+      const batchEndDate = new Date(batch.endDate);
+      batchEndDate.setHours(23, 59, 59, 999); // End of day
+      return batchEndDate >= today;
+    });
+  };
+
+  // Check if a specific class's batch is still active
+  const isClassBatchActive = (classItem) => {
+    if (!classItem.batch) return false;
+    
+    const classBatch = batches.find(b => b._id === classItem.batch._id);
+    if (!classBatch) return false;
+    
+    if (!classBatch.endDate) return true; // If no end date, batch is considered active
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const batchEndDate = new Date(classBatch.endDate);
+    batchEndDate.setHours(23, 59, 59, 999);
+    
+    return batchEndDate >= today;
+  };
+
   const getTodayClasses = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -165,11 +197,11 @@ export default function LearnerDashboard() {
       .slice(0, 5);
   };
 
-  const getRecentCompletedClasses = () => {
+  // Get all classes that have recording links AND belong to active batches
+  const getClassesWithRecordings = () => {
     return classes
-      .filter(cls => cls.status === 'completed')
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 5);
+      .filter(cls => cls.recordingLink && cls.recordingLink.trim() !== '' && isClassBatchActive(cls))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
   const statsCards = [
@@ -333,18 +365,38 @@ export default function LearnerDashboard() {
                 </h3>
                 <div className="space-y-3">
                   {batches.length > 0 ? (
-                    batches.slice(0, 3).map((batch) => (
-                      <div key={batch._id} className="p-4 bg-gray-100 rounded-lg border border-black">
-                        <h4 className="barlow text-base font-semibold text-black">{batch.name}</h4>
-                        <p className="barlow text-sm text-black mt-1">{batch.subject}</p>
-                        <div className="barlow text-xs text-black mt-2">
-                          <p>{formatDate(batch.startDate)} - {formatDate(batch.endDate)}</p>
-                          {batch.trainer && (
-                            <p className="mt-1">Trainer: {batch.trainer.name}</p>
-                          )}
+                    batches.slice(0, 3).map((batch) => {
+                      const isBatchActive = (() => {
+                        if (!batch.endDate) return true;
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const batchEndDate = new Date(batch.endDate);
+                        batchEndDate.setHours(23, 59, 59, 999);
+                        return batchEndDate >= today;
+                      })();
+
+                      return (
+                        <div key={batch._id} className="p-4 bg-gray-100 rounded-lg border border-black">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="barlow text-base font-semibold text-black">{batch.name}</h4>
+                              <p className="barlow text-sm text-black mt-1">{batch.subject}</p>
+                              <div className="barlow text-xs text-black mt-2">
+                                <p>{formatDate(batch.startDate)} - {formatDate(batch.endDate)}</p>
+                                {batch.trainer && (
+                                  <p className="mt-1">Trainer: {batch.trainer.name}</p>
+                                )}
+                              </div>
+                            </div>
+                            {!isBatchActive && (
+                              <span className="barlow px-2 py-1 bg-gray-300 text-black text-xs rounded-full">
+                                Ended
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="barlow text-sm text-black text-center py-8">No batches assigned yet</p>
                   )}
@@ -447,24 +499,42 @@ export default function LearnerDashboard() {
             </div>
 
             <div className="grid gap-4">
-              {batches.map((batch) => (
-                <div key={batch._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="barlow text-lg font-semibold text-black">{batch.name}</h4>
-                      <p className="barlow text-sm text-black mt-1">{batch.subject}</p>
-                      <div className="barlow flex items-center space-x-4 mt-3 text-sm text-black">
-                        <span>{formatDate(batch.startDate)} - {formatDate(batch.endDate)}</span>
-                        <span>•</span>
-                        <span>{batch.students && Array.isArray(batch.students) ? batch.students.length : 0} students</span>
+              {batches.map((batch) => {
+                const isBatchActive = (() => {
+                  if (!batch.endDate) return true;
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const batchEndDate = new Date(batch.endDate);
+                  batchEndDate.setHours(23, 59, 59, 999);
+                  return batchEndDate >= today;
+                })();
+
+                return (
+                  <div key={batch._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <h4 className="barlow text-lg font-semibold text-black">{batch.name}</h4>
+                          {!isBatchActive && (
+                            <span className="barlow px-3 py-1 bg-gray-300 text-black text-xs rounded-full">
+                              Batch Ended
+                            </span>
+                          )}
+                        </div>
+                        <p className="barlow text-sm text-black mt-1">{batch.subject}</p>
+                        <div className="barlow flex items-center space-x-4 mt-3 text-sm text-black">
+                          <span>{formatDate(batch.startDate)} - {formatDate(batch.endDate)}</span>
+                          <span>•</span>
+                          <span>{batch.students && Array.isArray(batch.students) ? batch.students.length : 0} students</span>
+                        </div>
+                        {batch.trainer && (
+                          <p className="barlow text-sm text-black mt-2">Trainer: {batch.trainer.name}</p>
+                        )}
                       </div>
-                      {batch.trainer && (
-                        <p className="barlow text-sm text-black mt-2">Trainer: {batch.trainer.name}</p>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {batches.length === 0 && (
                 <div className="bg-white rounded-xl p-12 text-center border-2 border-black">
                   <BookOpen className="mx-auto h-12 w-12 text-black mb-4" />
@@ -498,56 +568,63 @@ export default function LearnerDashboard() {
                   <tbody className="divide-y-2 divide-black">
                     {classes
                       .sort((a, b) => new Date(b.date) - new Date(a.date))
-                      .map((cls) => (
-                        <tr key={cls._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="barlow text-sm font-medium text-black">{cls.className}</div>
-                            {cls.description && (
-                              <div className="barlow text-xs text-black mt-1">{cls.description}</div>
-                            )}
-                          </td>
-                          <td className="barlow px-6 py-4 text-sm text-black">
-                            {formatDate(cls.date)}
-                          </td>
-                          <td className="barlow px-6 py-4 text-sm text-black">
-                            {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
-                          </td>
-                          <td className="barlow px-6 py-4 text-sm text-black">
-                            {cls.trainer ? cls.trainer.name : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`barlow px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(cls.status)}`}>
-                              {cls.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center space-x-2">
-                              {cls.teamsLink && cls.status !== 'completed' && (
-                                <a 
-                                  href={cls.teamsLink} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="barlow flex items-center space-x-1 px-3 py-1 text-black hover:bg-gray-100 rounded-lg border border-black text-xs"
-                                >
-                                  <ExternalLink size={14} />
-                                  <span>Join</span>
-                                </a>
+                      .map((cls) => {
+                        const showRecording = cls.recordingLink && cls.recordingLink.trim() !== '' && isClassBatchActive(cls);
+                        
+                        return (
+                          <tr key={cls._id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">
+                              <div className="barlow text-sm font-medium text-black">{cls.className}</div>
+                              {cls.description && (
+                                <div className="barlow text-xs text-black mt-1">{cls.description}</div>
                               )}
-                              {cls.recordingLink && cls.status === 'completed' && (
-                                <a 
-                                  href={cls.recordingLink} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="barlow flex items-center space-x-1 px-3 py-1 text-white bg-black hover:bg-gray-800 rounded-lg text-xs"
-                                >
-                                  <PlayCircle size={14} />
-                                  <span>Recording</span>
-                                </a>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="barlow px-6 py-4 text-sm text-black">
+                              {formatDate(cls.date)}
+                            </td>
+                            <td className="barlow px-6 py-4 text-sm text-black">
+                              {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
+                            </td>
+                            <td className="barlow px-6 py-4 text-sm text-black">
+                              {cls.trainer ? cls.trainer.name : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`barlow px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(cls.status)}`}>
+                                {cls.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center space-x-2">
+                                {cls.teamsLink && cls.status !== 'completed' && (
+                                  <a 
+                                    href={cls.teamsLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="barlow flex items-center space-x-1 px-3 py-1 text-black hover:bg-gray-100 rounded-lg border border-black text-xs"
+                                  >
+                                    <ExternalLink size={14} />
+                                    <span>Join</span>
+                                  </a>
+                                )}
+                                {showRecording && (
+                                  <a 
+                                    href={cls.recordingLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="barlow flex items-center space-x-1 px-3 py-1 text-white bg-black hover:bg-gray-800 rounded-lg text-xs"
+                                  >
+                                    <PlayCircle size={14} />
+                                    <span>Recording</span>
+                                  </a>
+                                )}
+                                {!isClassBatchActive(cls) && cls.recordingLink && (
+                                  <span className="barlow text-xs text-gray-400 italic">Batch ended</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
                 {classes.length === 0 && (
@@ -566,27 +643,46 @@ export default function LearnerDashboard() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="barlow text-xl font-semibold text-black">Class Recordings</h3>
+              {!hasActiveBatch() && batches.length > 0 && (
+                <div className="barlow flex items-center space-x-2 px-4 py-2 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                  <AlertCircle size={18} className="text-yellow-600" />
+                  <span className="text-sm text-yellow-800">All your batches have ended - recordings are no longer available</span>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4">
-              {getRecentCompletedClasses().length > 0 ? (
-                getRecentCompletedClasses().map((cls) => (
-                  <div key={cls._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="barlow text-lg font-semibold text-black">{cls.className}</h4>
-                        <p className="barlow text-sm text-black mt-1">
-                          {formatDate(cls.date)} • {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
-                        </p>
-                        {cls.trainer && (
-                          <p className="barlow text-sm text-black mt-1">Trainer: {cls.trainer.name}</p>
-                        )}
-                        {cls.description && (
-                          <p className="barlow text-sm text-black mt-2">{cls.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {cls.recordingLink ? (
+              {getClassesWithRecordings().length > 0 ? (
+                getClassesWithRecordings().map((cls) => {
+                  const classBatch = batches.find(b => b._id === cls.batch._id);
+                  return (
+                    <div key={cls._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="barlow text-lg font-semibold text-black">{cls.className}</h4>
+                          {cls.batch && classBatch && (
+                            <p className="barlow text-sm text-black mt-1">
+                              {formatDate(classBatch.startDate)} - {formatDate(classBatch.endDate)}
+                            </p>
+                          )}
+                          {cls.batch && (
+                            <p className="barlow text-sm text-black mt-1">
+                              Batch: {cls.batch.name}
+                            </p>
+                          )}
+                          {cls.trainer && (
+                            <p className="barlow text-sm text-black mt-1">Trainer: {cls.trainer.name}</p>
+                          )}
+                          {cls.description && (
+                            <p className="barlow text-sm text-black mt-2">{cls.description}</p>
+                          )}
+                          <div className="flex items-center space-x-2 mt-2">
+                            <span className={`barlow px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(cls.status)}`}>
+                              {cls.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
                           <a 
                             href={cls.recordingLink} 
                             target="_blank" 
@@ -596,19 +692,19 @@ export default function LearnerDashboard() {
                             <PlayCircle size={18} />
                             <span>Watch Recording</span>
                           </a>
-                        ) : (
-                          <div className="barlow px-4 py-2 bg-gray-200 text-black rounded-lg border border-black">
-                            <span className="text-sm">Recording not available</span>
-                          </div>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="bg-white rounded-xl p-12 text-center border-2 border-black">
                   <PlayCircle className="mx-auto h-12 w-12 text-black mb-4" />
-                  <p className="barlow text-black">No recordings available yet</p>
+                  <p className="barlow text-black">
+                    {!hasActiveBatch() && batches.length > 0
+                      ? "Recordings are no longer available as your batches have ended"
+                      : "No recordings available yet"}
+                  </p>
                 </div>
               )}
             </div>

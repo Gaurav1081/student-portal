@@ -228,14 +228,7 @@ const LoginPage = () => {
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="barlow text-sm text-black">Demo Credentials:</p>
-            <div className="monaco mt-2 text-xs text-black space-y-1">
-              <p>Admin: admin@test.com / 123456</p>
-              <p>Trainer: trainer@test.com / 123456</p>
-              <p>Student: student@test.com / 123456</p>
-            </div>
-          </div>
+         
         </form>
       </div>
     </div>
