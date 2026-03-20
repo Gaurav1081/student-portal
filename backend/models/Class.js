@@ -34,10 +34,21 @@ const classSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Legacy single recording link — kept for backward compatibility with existing data
     recordingLink: {
       type: String,
       trim: true,
       default: '',
+    },
+    // New: multiple recordings per class, auto-labelled Part 1, Part 2, etc.
+    recordings: {
+      type: [
+        {
+          label: { type: String, trim: true, default: '' },
+          url:   { type: String, trim: true, default: '' },
+        },
+      ],
+      default: [],
     },
     status: {
       type: String,

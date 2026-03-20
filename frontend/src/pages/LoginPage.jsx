@@ -2,7 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
-import logo from "../assets/CCA_black.png";
+import logo from "../assets/CCALogo.png";
+
+const fontStyle = `
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+`;
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -40,9 +44,7 @@ const LoginPage = () => {
         console.log("Login successful!");
         console.log("User role:", result.user.role);
 
-        // Small delay to ensure state updates
         setTimeout(() => {
-          // Redirect based on role
           switch (result.user.role) {
             case "admin":
               console.log("Navigating to admin dashboard...");
@@ -74,41 +76,28 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
-      <style>{`
-        @font-face {
-          font-family: 'Barlow Condensed';
-          src: url('/fonts/BarlowCondensed-Regular.woff2') format('woff2');
-          font-weight: 400;
-          font-style: normal;
-        }
-        
-        .barlow {
-          font-family: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        
-        .impact {
-          font-family: Impact, 'Arial Black', sans-serif;
-        }
-        
-        .monaco {
-          font-family: Monaco, 'Courier New', monospace;
-        }
-      `}</style>
-      
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] py-12 px-4 sm:px-6 lg:px-8">
+      <style>{fontStyle}</style>
+
+      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-2xl border-2 border-[#e8e8e8]">
         <div>
           <div className="flex justify-center mb-6">
-            <img 
-              src={logo} 
-              alt="Student Portal Logo" 
-              className="h-20 w-auto"
+            <img
+              src={logo}
+              alt="Student Portal Logo"
+              className="h-15 w-auto"
             />
           </div>
-          <h2 className="barlow text-center text-4xl font-extrabold text-black">
+          <h2
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800 }}
+            className="text-center text-4xl text-[#0a0a0a]"
+          >
             Student Portal
           </h2>
-          <p className="barlow mt-2 text-center text-sm text-black">
+          <p
+            style={{ fontFamily: 'Poppins, sans-serif' }}
+            className="mt-2 text-center text-sm text-[#555555]"
+          >
             Sign in to your account
           </p>
         </div>
@@ -118,7 +107,8 @@ const LoginPage = () => {
             <div>
               <label
                 htmlFor="email"
-                className="barlow block text-sm font-medium text-black mb-1"
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className="block text-sm font-medium text-[#0a0a0a] mb-1"
               >
                 Email Address
               </label>
@@ -128,7 +118,8 @@ const LoginPage = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="barlow appearance-none relative block w-full px-3 py-3 border-2 border-black placeholder-gray-500 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent bg-white"
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className="appearance-none relative block w-full px-3 py-3 border-2 border-[#e8e8e8] placeholder-[#555555] text-[#0a0a0a] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E8001C] focus:border-[#E8001C] bg-white transition-colors"
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
@@ -138,7 +129,8 @@ const LoginPage = () => {
             <div>
               <label
                 htmlFor="password"
-                className="barlow block text-sm font-medium text-black mb-1"
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className="block text-sm font-medium text-[#0a0a0a] mb-1"
               >
                 Password
               </label>
@@ -149,7 +141,8 @@ const LoginPage = () => {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="barlow appearance-none relative block w-full px-3 py-3 pr-10 border-2 border-black placeholder-gray-500 text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent bg-white"
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="appearance-none relative block w-full px-3 py-3 pr-10 border-2 border-[#e8e8e8] placeholder-[#555555] text-[#0a0a0a] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E8001C] focus:border-[#E8001C] bg-white transition-colors"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
@@ -157,7 +150,7 @@ const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-black hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#555555] hover:text-[#0a0a0a] transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -170,7 +163,7 @@ const LoginPage = () => {
           </div>
 
           {error && (
-            <div className="rounded-lg bg-black p-4">
+            <div className="rounded-lg bg-[#E8001C] p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
@@ -186,7 +179,7 @@ const LoginPage = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="barlow text-sm font-medium text-white">{error}</p>
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-medium text-white">{error}</p>
                 </div>
               </div>
             </div>
@@ -196,7 +189,8 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="barlow group relative w-full flex justify-center py-3 px-4 border-2 border-black text-sm font-medium rounded-lg text-white bg-black hover:bg-white hover:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ fontFamily: 'Poppins, sans-serif' }}
+              className="group relative w-full flex justify-center py-3 px-4 border-2 border-[#0a0a0a] text-sm font-semibold rounded-lg text-white bg-[#0a0a0a] hover:bg-[#E8001C] hover:border-[#E8001C] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#E8001C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <span className="flex items-center">
@@ -227,8 +221,6 @@ const LoginPage = () => {
               )}
             </button>
           </div>
-
-         
         </form>
       </div>
     </div>

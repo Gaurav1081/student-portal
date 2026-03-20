@@ -1,13 +1,148 @@
 import React, { useState, useEffect } from "react";
-import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap } from "lucide-react";
+import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap, PlayCircle, Link, Menu, ChevronDown } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import config from "../../config";
 
 const API_URL = config.apiUrl;
 
+const globalStyles = `
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+.ad-tab {
+  position:relative; overflow:hidden;
+  padding:1rem 0.5rem;
+  font-family:'Poppins',sans-serif; font-size:0.875rem; font-weight:500;
+  color:#555555; background:none; border:none; border-bottom:2px solid transparent;
+  cursor:pointer; white-space:nowrap; flex-shrink:0;
+  transition:color 0.2s;
+}
+.ad-tab::after {
+  content:''; position:absolute; bottom:0; left:0; right:0;
+  height:2px; background:#E8001C;
+  transform:scaleX(0); transform-origin:left;
+  transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  border-radius:2px;
+}
+.ad-tab:hover::after, .ad-tab.active::after { transform:scaleX(1); }
+.ad-tab:hover, .ad-tab.active { color:#E8001C; }
+
+.ad-btn {
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;
+  padding:0.6rem 1.35rem;
+  font-family:'Poppins',sans-serif; font-size:0.875rem; font-weight:600;
+  color:#ffffff; background:#E8001C;
+  border:2px solid #E8001C; border-radius:8px;
+  cursor:pointer; text-decoration:none;
+  transition:color 0.4s ease, border-color 0.4s ease;
+  white-space:nowrap;
+}
+.ad-btn::after {
+  content:''; position:absolute; top:50%; left:50%;
+  width:0; height:0; background:#0a0a0a; border-radius:50%;
+  transform:translate(-50%,-50%);
+  transition:width 0.55s cubic-bezier(0.4,0,0.2,1), height 0.55s cubic-bezier(0.4,0,0.2,1);
+  z-index:0;
+}
+.ad-btn:hover::after { width:400px; height:400px; }
+.ad-btn:hover { border-color:#0a0a0a; }
+.ad-btn > *, .ad-btn span { position:relative; z-index:1; }
+
+.ad-btn-ghost {
+  background:#ffffff; color:#0a0a0a; border:2px solid #e5e7eb;
+}
+.ad-btn-ghost::after { background:#E8001C; }
+.ad-btn-ghost:hover { color:#ffffff; border-color:#E8001C; }
+
+.ad-icon-btn {
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px;
+  color:#E8001C; background:#fff0f0;
+  border:1.5px solid #ffc0c0; border-radius:8px;
+  cursor:pointer;
+  transition:color 0.4s ease, border-color 0.4s ease;
+  flex-shrink:0;
+}
+.ad-icon-btn::after {
+  content:''; position:absolute; top:50%; left:50%;
+  width:0; height:0; background:#0a0a0a; border-radius:50%;
+  transform:translate(-50%,-50%);
+  transition:width 0.45s cubic-bezier(0.4,0,0.2,1), height 0.45s cubic-bezier(0.4,0,0.2,1);
+  z-index:0;
+}
+.ad-icon-btn:hover::after { width:80px; height:80px; }
+.ad-icon-btn > svg, .ad-icon-btn > * { position:relative; z-index:1; }
+.ad-icon-btn:hover { color:#ffffff; border-color:#0a0a0a; }
+
+.ad-icon-delete { color:#E8001C; background:#fff0f0; border-color:#ffc0c0; }
+
+.ad-settings-btn {
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:38px; height:38px;
+  color:#555555; background:#ffffff;
+  border:1.5px solid #e5e7eb; border-radius:8px;
+  cursor:pointer;
+  transition:color 0.4s ease, border-color 0.4s ease;
+}
+.ad-settings-btn::after {
+  content:''; position:absolute; top:50%; left:50%;
+  width:0; height:0; background:#E8001C; border-radius:50%;
+  transform:translate(-50%,-50%);
+  transition:width 0.45s cubic-bezier(0.4,0,0.2,1), height 0.45s cubic-bezier(0.4,0,0.2,1);
+  z-index:0;
+}
+.ad-settings-btn:hover::after { width:80px; height:80px; }
+.ad-settings-btn > svg { position:relative; z-index:1; }
+.ad-settings-btn:hover { color:#ffffff; border-color:#E8001C; }
+
+.stat-card:hover .stat-icon { background:#E8001C !important; }
+.stat-card:hover .stat-icon svg { stroke:#ffffff !important; }
+.stat-card:hover .stat-num { color:#E8001C; }
+
+.ad-row:hover { background:#fff0f0; }
+.ad-row:hover .ad-row-name { color:#E8001C; }
+
+.ad-input:focus { border-color:#E8001C !important; box-shadow:0 0 0 3px rgba(232,0,28,0.08); outline:none; }
+`;
+
+const getAutoStatus = (cls) => {
+  if (!cls.date || !cls.startTime || !cls.endTime) return cls.status || 'scheduled';
+  const now = new Date();
+  const classDate = new Date(cls.date);
+  const [startH, startM] = cls.startTime.split(':').map(Number);
+  const [endH, endM] = cls.endTime.split(':').map(Number);
+  const start = new Date(classDate); start.setHours(startH, startM, 0, 0);
+  const end = new Date(classDate); end.setHours(endH, endM, 0, 0);
+  if (now >= start && now <= end) return 'ongoing';
+  if (now > end) return 'completed';
+  return 'scheduled';
+};
+
+const statusColor = (status) => {
+  switch (status) {
+    case 'ongoing': return 'bg-[#E8001C] text-white';
+    case 'completed': return 'bg-[#e8e8e8] text-[#0a0a0a]';
+    default: return 'bg-white text-[#0a0a0a] border border-[#e8e8e8]';
+  }
+};
+
+const getClassRecordings = (cls) => {
+  if (cls.recordings && cls.recordings.length > 0) {
+    return cls.recordings.map((r, i) => ({ label: r.label || `Part ${i + 1}`, url: r.url }));
+  }
+  if (cls.recordingLink && cls.recordingLink.trim() !== '') {
+    return [{ label: 'Part 1', url: cls.recordingLink }];
+  }
+  return [];
+};
+
+const hasAnyRecording = (cls) => getClassRecordings(cls).length > 0;
+
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState({ totalUsers: 0, totalBatches: 0, totalClasses: 0, activeClasses: 0, totalTrainers: 0 });
@@ -26,6 +161,16 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [editRecordings, setEditRecordings] = useState([]);
+  const [editRecError, setEditRecError] = useState("");
+
+  const [addRecDate, setAddRecDate] = useState("");
+  const [addRecBatchId, setAddRecBatchId] = useState("");
+  const [addRecClassId, setAddRecClassId] = useState("");
+  const [addRecLink, setAddRecLink] = useState("");
+  const [addRecError, setAddRecError] = useState("");
 
   const getAuthHeaders = () => ({
     Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -33,8 +178,8 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (!authLoading && user) fetchDashboardData();
+  }, [authLoading, user]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -46,34 +191,25 @@ export default function AdminDashboard() {
         fetch(`${API_URL}/users/trainers`, { headers }),
         fetch(`${API_URL}/users/learners`, { headers })
       ]);
-
-      if (!batchesRes.ok || !classesRes.ok || !trainersRes.ok || !learnersRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
+      if (!batchesRes.ok || !classesRes.ok || !trainersRes.ok || !learnersRes.ok) throw new Error('Failed to fetch data');
       const batchesData = await batchesRes.json();
       const classesData = await classesRes.json();
       const trainersData = await trainersRes.json();
       const learnersData = await learnersRes.json();
-
       setBatches(batchesData || []);
       setClasses(classesData || []);
       setTrainers(trainersData || []);
       setStudents(learnersData || []);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
       const activeClasses = (classesData || []).filter(cls => {
-        const classDate = new Date(cls.date);
-        classDate.setHours(0, 0, 0, 0);
+        const classDate = new Date(cls.date); classDate.setHours(0, 0, 0, 0);
         return classDate.getTime() === today.getTime() || cls.status === 'ongoing';
       }).length;
-
       setStats({
         totalUsers: learnersData?.length || 0,
         totalBatches: batchesData?.length || 0,
         totalClasses: classesData?.length || 0,
-        activeClasses: activeClasses,
+        activeClasses,
         totalTrainers: trainersData?.length || 0,
       });
     } catch (error) {
@@ -84,952 +220,1141 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
+  const handleLogout = () => { logout(); navigate("/login", { replace: true }); };
 
+  // ── Batch handlers ─────────────────────────────────────────────────────────
   const handleCreateBatch = () => {
-    setModalType("batch");
-    setSelectedItem(null);
+    setModalType("batch"); setSelectedItem(null);
     setFormData({ name: "", subject: "", trainer: "", startDate: "", endDate: "" });
-    setError("");
-    setSearchQuery("");
-    setShowModal(true);
+    setError(""); setSearchQuery(""); setShowModal(true);
   };
-
   const handleEditBatch = (batch) => {
-    setModalType("batch");
-    setSelectedItem(batch);
+    setModalType("batch"); setSelectedItem(batch);
     setFormData({
-      name: batch.name || "",
-      subject: batch.subject || "",
-      trainer: (batch.trainer && batch.trainer._id) ? batch.trainer._id : "",
+      name: batch.name || "", subject: batch.subject || "",
+      trainer: batch.trainer?._id || "",
       startDate: batch.startDate ? new Date(batch.startDate).toISOString().split('T')[0] : "",
       endDate: batch.endDate ? new Date(batch.endDate).toISOString().split('T')[0] : ""
     });
-    setError("");
-    setSearchQuery("");
-    setShowModal(true);
+    setError(""); setSearchQuery(""); setShowModal(true);
   };
-
   const handleSaveBatch = async () => {
-    setSubmitting(true);
-    setError("");
-    if (!formData.name || !formData.subject) {
-      setError("Please fill in all required fields");
-      setSubmitting(false);
-      return;
-    }
+    setSubmitting(true); setError("");
+    if (!formData.name || !formData.subject) { setError("Please fill in all required fields"); setSubmitting(false); return; }
     try {
       const headers = getAuthHeaders();
-      let response;
-      if (selectedItem) {
-        response = await fetch(`${API_URL}/batches/${selectedItem._id}`, {
-          method: 'PUT', headers, body: JSON.stringify(formData)
-        });
-      } else {
-        response = await fetch(`${API_URL}/batches`, {
-          method: 'POST', headers, body: JSON.stringify(formData)
-        });
-      }
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save batch');
-      }
-      setShowModal(false);
-      setError("");
+      const response = selectedItem
+        ? await fetch(`${API_URL}/batches/${selectedItem._id}`, { method: 'PUT', headers, body: JSON.stringify(formData) })
+        : await fetch(`${API_URL}/batches`, { method: 'POST', headers, body: JSON.stringify(formData) });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to save batch'); }
+      setShowModal(false); setError("");
       alert(selectedItem ? "Batch updated successfully!" : "Batch created successfully!");
       fetchDashboardData();
-    } catch (error) {
-      console.error("Error saving batch:", error);
-      setError(error.message || "Failed to save batch");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (error) { setError(error.message || "Failed to save batch"); } finally { setSubmitting(false); }
   };
-
   const handleDeleteBatch = async (batchId) => {
     if (!window.confirm("Are you sure you want to delete this batch?")) return;
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/batches/${batchId}`, { method: 'DELETE', headers });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete batch');
-      }
-      alert("Batch deleted successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error deleting batch:", error);
-      alert(error.message || "Failed to delete batch");
-    }
+      const response = await fetch(`${API_URL}/batches/${batchId}`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to delete batch'); }
+      alert("Batch deleted successfully!"); fetchDashboardData();
+    } catch (error) { alert(error.message || "Failed to delete batch"); }
   };
 
+  // ── Class handlers ──────────────────────────────────────────────────────────
   const handleCreateClass = () => {
-    setModalType("class");
-    setSelectedItem(null);
-    setFormData({ className: "", batch: "", trainer: "", startTime: "", endTime: "", teamsLink: "", description: "", status: "scheduled", recordingLink: "" });
-    setError("");
-    setSearchQuery("");
-    setShowModal(true);
+    setModalType("class"); setSelectedItem(null);
+    setFormData({ className: "", batch: "", trainer: "", startTime: "", endTime: "", teamsLink: "", description: "", status: "scheduled" });
+    setError(""); setSearchQuery(""); setShowModal(true);
   };
-
   const handleEditClass = (classItem) => {
-    setModalType("class");
-    setSelectedItem(classItem);
+    setModalType("class"); setSelectedItem(classItem);
     setFormData({
       className: classItem.className || "",
-      batch: (classItem.batch && classItem.batch._id) ? classItem.batch._id : "",
-      trainer: (classItem.trainer && classItem.trainer._id) ? classItem.trainer._id : "",
-      startTime: classItem.startTime || "",
-      endTime: classItem.endTime || "",
-      teamsLink: classItem.teamsLink || "",
-      description: classItem.description || "",
-      status: classItem.status || "scheduled",
-      recordingLink: classItem.recordingLink || ""
+      batch: classItem.batch?._id || "",
+      trainer: classItem.trainer?._id || "",
+      startTime: classItem.startTime || "", endTime: classItem.endTime || "",
+      teamsLink: classItem.teamsLink || "", description: classItem.description || "",
+      status: classItem.status || "scheduled"
     });
-    setError("");
-    setSearchQuery("");
-    setShowModal(true);
+    setError(""); setSearchQuery(""); setShowModal(true);
   };
-
   const handleBatchChange = (batchId) => {
     const selectedBatch = batches.find(b => b._id === batchId);
-    if (selectedBatch) {
-      setFormData(prev => ({
-        ...prev,
-        batch: batchId,
-        startDate: selectedBatch.startDate ? new Date(selectedBatch.startDate).toISOString().split('T')[0] : "",
-        endDate: selectedBatch.endDate ? new Date(selectedBatch.endDate).toISOString().split('T')[0] : ""
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        batch: batchId,
-        startDate: "",
-        endDate: ""
-      }));
-    }
+    setFormData(prev => ({
+      ...prev, batch: batchId,
+      startDate: selectedBatch?.startDate ? new Date(selectedBatch.startDate).toISOString().split('T')[0] : "",
+      endDate: selectedBatch?.endDate ? new Date(selectedBatch.endDate).toISOString().split('T')[0] : ""
+    }));
   };
-
   const handleSaveClass = async () => {
-    setSubmitting(true);
-    setError("");
-    const requiredFields = {
-      'Class Name': formData.className, 
-      'Batch': formData.batch, 
-      'Trainer': formData.trainer,
-      'Start Time': formData.startTime, 
-      'End Time': formData.endTime,
-      'MS Teams Link': formData.teamsLink
-    };
-    const missingFields = Object.entries(requiredFields).filter(([_, value]) => !value || value === '').map(([field]) => field);
-    if (missingFields.length > 0) {
-      setError(`Please fill in: ${missingFields.join(', ')}`);
-      setSubmitting(false);
-      return;
-    }
-
+    setSubmitting(true); setError("");
+    const requiredFields = { 'Class Name': formData.className, 'Batch': formData.batch, 'Trainer': formData.trainer, 'Start Time': formData.startTime, 'End Time': formData.endTime, 'MS Teams Link': formData.teamsLink };
+    const missingFields = Object.entries(requiredFields).filter(([_, v]) => !v || v === '').map(([f]) => f);
+    if (missingFields.length > 0) { setError(`Please fill in: ${missingFields.join(', ')}`); setSubmitting(false); return; }
     const selectedBatch = batches.find(b => b._id === formData.batch);
-    if (!selectedBatch || !selectedBatch.startDate) {
-      setError("Selected batch must have start and end dates");
-      setSubmitting(false);
-      return;
-    }
-
+    if (!selectedBatch?.startDate) { setError("Selected batch must have start and end dates"); setSubmitting(false); return; }
     try {
       const headers = getAuthHeaders();
-      const classPayload = {
-        className: formData.className,
-        batch: formData.batch,
-        trainer: formData.trainer,
-        date: selectedBatch.startDate,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        teamsLink: formData.teamsLink,
-        description: formData.description,
-        status: formData.status || "scheduled",
-        recordingLink: formData.recordingLink || ""
-      };
-
-      let response;
-      if (selectedItem) {
-        response = await fetch(`${API_URL}/classes/${selectedItem._id}`, {
-          method: 'PUT', headers, body: JSON.stringify(classPayload)
-        });
-      } else {
-        response = await fetch(`${API_URL}/classes`, {
-          method: 'POST', headers, body: JSON.stringify(classPayload)
-        });
-      }
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save class');
-      }
-      setShowModal(false);
-      setError("");
-      alert(selectedItem ? "Class updated!" : "Class created!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error saving class:", error);
-      setError(error.message || "Failed to save class");
-    } finally {
-      setSubmitting(false);
-    }
+      const classPayload = { ...formData, date: selectedBatch.startDate };
+      const response = selectedItem
+        ? await fetch(`${API_URL}/classes/${selectedItem._id}`, { method: 'PUT', headers, body: JSON.stringify(classPayload) })
+        : await fetch(`${API_URL}/classes`, { method: 'POST', headers, body: JSON.stringify(classPayload) });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to save class'); }
+      setShowModal(false); setError("");
+      alert(selectedItem ? "Class updated!" : "Class created!"); fetchDashboardData();
+    } catch (error) { setError(error.message || "Failed to save class"); } finally { setSubmitting(false); }
   };
-
   const handleDeleteClass = async (classId) => {
     if (!window.confirm("Are you sure you want to delete this class?")) return;
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/classes/${classId}`, { method: 'DELETE', headers });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete class');
-      }
-      alert("Class deleted successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error deleting class:", error);
-      alert(error.message || "Failed to delete class");
-    }
+      const response = await fetch(`${API_URL}/classes/${classId}`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to delete class'); }
+      alert("Class deleted successfully!"); fetchDashboardData();
+    } catch (error) { alert(error.message || "Failed to delete class"); }
   };
 
+  // ── Edit Recordings modal ──────────────────────────────────────────────────
+  const handleOpenEditRecordings = (classItem) => {
+    setSelectedItem(classItem);
+    const existing = getClassRecordings(classItem);
+    setEditRecordings(existing.length > 0 ? existing.map(r => ({ ...r })) : [{ label: 'Part 1', url: '' }]);
+    setEditRecError("");
+    setModalType("editRecordings");
+    setShowModal(true);
+  };
+  const handleAddRecordingPart = () => {
+    setEditRecordings(prev => [...prev, { label: `Part ${prev.length + 1}`, url: '' }]);
+  };
+  const handleRemoveRecordingPart = (idx) => {
+    setEditRecordings(prev => prev.filter((_, i) => i !== idx).map((r, i) => ({ ...r, label: `Part ${i + 1}` })));
+  };
+  const handleEditRecordingUrl = (idx, url) => {
+    setEditRecordings(prev => prev.map((r, i) => i === idx ? { ...r, url } : r));
+  };
+  const handleSaveEditRecordings = async () => {
+    setSubmitting(true); setEditRecError("");
+    const validParts = editRecordings.filter(r => r.url.trim() !== '');
+    if (validParts.length === 0) { setEditRecError("Please add at least one recording link"); setSubmitting(false); return; }
+    if (editRecordings.some(r => r.url.trim() === '')) { setEditRecError("Please fill in all recording links or remove empty ones"); setSubmitting(false); return; }
+    try {
+      const payload = {
+        className: selectedItem.className,
+        batch: selectedItem.batch?._id || selectedItem.batch,
+        trainer: selectedItem.trainer?._id || selectedItem.trainer,
+        date: selectedItem.date, startTime: selectedItem.startTime,
+        endTime: selectedItem.endTime, teamsLink: selectedItem.teamsLink,
+        description: selectedItem.description, status: selectedItem.status,
+        recordings: editRecordings.map((r, i) => ({ label: `Part ${i + 1}`, url: r.url.trim() })),
+        recordingLink: editRecordings[0]?.url.trim() || '',
+      };
+      const response = await fetch(`${API_URL}/classes/${selectedItem._id}`, {
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload),
+      });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to save'); }
+      setShowModal(false); fetchDashboardData();
+    } catch (err) { setEditRecError(err.message || "Failed to save recordings"); } finally { setSubmitting(false); }
+  };
+
+  // ── Add Recording by date ──────────────────────────────────────────────────
+  const handleOpenAddRecording = () => {
+    setAddRecDate(""); setAddRecBatchId(""); setAddRecClassId("");
+    setAddRecLink(""); setAddRecError("");
+    setModalType("addRecording"); setShowModal(true);
+  };
+  const addRecFilteredClasses = classes.filter(cls => {
+    if (!addRecDate || !addRecBatchId) return false;
+    const clsDate = new Date(cls.date);
+    const clsDateStr = `${clsDate.getFullYear()}-${String(clsDate.getMonth() + 1).padStart(2, '0')}-${String(clsDate.getDate()).padStart(2, '0')}`;
+    return clsDateStr === addRecDate && (cls.batch?._id || cls.batch) === addRecBatchId;
+  });
+  const handleSaveAddRecording = async () => {
+    setSubmitting(true); setAddRecError("");
+    if (!addRecDate) { setAddRecError("Please select a date"); setSubmitting(false); return; }
+    if (!addRecBatchId) { setAddRecError("Please select a batch"); setSubmitting(false); return; }
+    if (!addRecClassId) { setAddRecError("Please select a class"); setSubmitting(false); return; }
+    if (!addRecLink.trim()) { setAddRecError("Please paste the Google Drive recording link"); setSubmitting(false); return; }
+    const targetClass = classes.find(c => c._id === addRecClassId);
+    if (!targetClass) { setAddRecError("Class not found"); setSubmitting(false); return; }
+    const existingRecordings = getClassRecordings(targetClass);
+    const newPartLabel = `Part ${existingRecordings.length + 1}`;
+    const updatedRecordings = [
+      ...existingRecordings.map((r, i) => ({ label: `Part ${i + 1}`, url: r.url })),
+      { label: newPartLabel, url: addRecLink.trim() },
+    ];
+    try {
+      const payload = {
+        className: targetClass.className,
+        batch: targetClass.batch?._id || targetClass.batch,
+        trainer: targetClass.trainer?._id || targetClass.trainer,
+        date: targetClass.date, startTime: targetClass.startTime,
+        endTime: targetClass.endTime, teamsLink: targetClass.teamsLink,
+        description: targetClass.description, status: targetClass.status,
+        recordings: updatedRecordings,
+        recordingLink: updatedRecordings[0]?.url || '',
+      };
+      const response = await fetch(`${API_URL}/classes/${targetClass._id}`, {
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload),
+      });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to save recording'); }
+      setShowModal(false);
+      alert(`Recording added as ${newPartLabel}!`);
+      fetchDashboardData();
+    } catch (err) { setAddRecError(err.message || "Failed to save recording link"); } finally { setSubmitting(false); }
+  };
+
+  // ── Student / assign handlers ───────────────────────────────────────────────
   const handleAssignStudents = (batch) => {
-    setModalType("assign");
-    setSelectedItem(batch);
-    const assignedStudentIds = (batch.students || []).map(s => s._id);
-    setSelectedStudents(assignedStudentIds);
-    setError("");
-    setSearchQuery("");
-    setShowModal(true);
+    setModalType("assign"); setSelectedItem(batch);
+    setSelectedStudents((batch.students || []).map(s => s._id));
+    setError(""); setSearchQuery(""); setShowModal(true);
   };
-
   const handleAddStudent = (batch) => {
-    setModalType("addStudent");
-    setSelectedItem(batch);
+    setModalType("addStudent"); setSelectedItem(batch);
     setFormData({ name: "", email: "", password: "" });
-    setError("");
-    setSearchQuery("");
-    setShowModal(true);
+    setError(""); setSearchQuery(""); setShowModal(true);
   };
-
   const handleSaveNewStudent = async () => {
-    setSubmitting(true);
-    setError("");
-    
-    if (!formData.name || !formData.email || !formData.password) {
-      setError("Please fill in all required fields");
-      setSubmitting(false);
-      return;
-    }
-
+    setSubmitting(true); setError("");
+    if (!formData.name || !formData.email || !formData.password) { setError("Please fill in all required fields"); setSubmitting(false); return; }
     try {
-      const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/users/register`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: "learner",
-          batch: selectedItem._id
-        })
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ ...formData, role: "learner", batch: selectedItem._id })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create student');
-      }
-
-      setShowModal(false);
-      setError("");
-      alert("Student created and assigned successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error creating student:", error);
-      setError(error.message || "Failed to create student");
-    } finally {
-      setSubmitting(false);
-    }
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to create student'); }
+      setShowModal(false); alert("Student created and assigned successfully!"); fetchDashboardData();
+    } catch (error) { setError(error.message || "Failed to create student"); } finally { setSubmitting(false); }
   };
-
   const handleSaveStudentAssignment = async () => {
+    setSubmitting(true); setError("");
     try {
-      setSubmitting(true);
-      setError("");
-      const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/batches/${selectedItem._id}/sync-students`, {
-        method: 'PUT', headers, body: JSON.stringify({ studentIds: selectedStudents })
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ studentIds: selectedStudents })
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to assign students');
-      }
-      setShowModal(false);
-      setError("");
-      alert("Students assigned successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error assigning students:", error);
-      setError(error.message || "Failed to assign students");
-    } finally {
-      setSubmitting(false);
-    }
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to assign students'); }
+      setShowModal(false); alert("Students assigned successfully!"); fetchDashboardData();
+    } catch (error) { setError(error.message || "Failed to assign students"); } finally { setSubmitting(false); }
   };
-
   const toggleStudentSelection = (studentId) => {
     setSelectedStudents(prev => prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]);
   };
 
-  // Trainer Management Functions
+  // ── Trainer handlers ────────────────────────────────────────────────────────
   const handleCreateTrainer = () => {
-    setModalType("trainer");
-    setSelectedItem(null);
+    setModalType("trainer"); setSelectedItem(null);
     setFormData({ name: "", email: "", password: "", subject: "", phone: "" });
-    setError("");
-    setShowPassword(false);
-    setShowModal(true);
+    setError(""); setShowPassword(false); setShowModal(true);
   };
-
   const handleEditTrainer = (trainer) => {
-    setModalType("editTrainer");
-    setSelectedItem(trainer);
-    setFormData({
-      name: trainer.name || "",
-      email: trainer.email || "",
-      subject: trainer.subject || "",
-      phone: trainer.phone || ""
-    });
-    setError("");
-    setShowModal(true);
+    setModalType("editTrainer"); setSelectedItem(trainer);
+    setFormData({ name: trainer.name || "", email: trainer.email || "", subject: trainer.subject || "", phone: trainer.phone || "" });
+    setError(""); setShowModal(true);
   };
-
   const handleSaveTrainer = async () => {
-    setSubmitting(true);
-    setError("");
-    
-    if (!formData.name || !formData.email) {
-      setError("Name and email are required");
-      setSubmitting(false);
-      return;
-    }
-
-    if (!selectedItem && !formData.password) {
-      setError("Password is required for new trainers");
-      setSubmitting(false);
-      return;
-    }
-
+    setSubmitting(true); setError("");
+    if (!formData.name || !formData.email) { setError("Name and email are required"); setSubmitting(false); return; }
+    if (!formData.password) { setError("Password is required for new trainers"); setSubmitting(false); return; }
     try {
-      const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/users/register`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: "trainer",
-          subject: formData.subject,
-          phone: formData.phone
-        })
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ ...formData, role: "trainer" })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create trainer');
-      }
-
-      setShowModal(false);
-      setError("");
-      alert("Trainer created successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error creating trainer:", error);
-      setError(error.message || "Failed to create trainer");
-    } finally {
-      setSubmitting(false);
-    }
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to create trainer'); }
+      setShowModal(false); alert("Trainer created successfully!"); fetchDashboardData();
+    } catch (error) { setError(error.message || "Failed to create trainer"); } finally { setSubmitting(false); }
   };
-
   const handleUpdateTrainer = async () => {
-    setSubmitting(true);
-    setError("");
-    
-    if (!formData.name || !formData.email) {
-      setError("Name and email are required");
-      setSubmitting(false);
-      return;
-    }
-
+    setSubmitting(true); setError("");
+    if (!formData.name || !formData.email) { setError("Name and email are required"); setSubmitting(false); return; }
     try {
-      const headers = getAuthHeaders();
       const response = await fetch(`${API_URL}/users/${selectedItem._id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject,
-          phone: formData.phone
-        })
+        method: 'PUT', headers: getAuthHeaders(),
+        body: JSON.stringify({ name: formData.name, email: formData.email, subject: formData.subject, phone: formData.phone })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update trainer');
-      }
-
-      setShowModal(false);
-      setError("");
-      alert("Trainer updated successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error updating trainer:", error);
-      setError(error.message || "Failed to update trainer");
-    } finally {
-      setSubmitting(false);
-    }
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to update trainer'); }
+      setShowModal(false); alert("Trainer updated successfully!"); fetchDashboardData();
+    } catch (error) { setError(error.message || "Failed to update trainer"); } finally { setSubmitting(false); }
   };
-
   const handleDeleteTrainer = async (trainerId) => {
     if (!window.confirm("Are you sure you want to delete this trainer?")) return;
-    
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`${API_URL}/users/${trainerId}`, { 
-        method: 'DELETE', 
-        headers 
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete trainer');
-      }
-      
-      alert("Trainer deleted successfully!");
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error deleting trainer:", error);
-      alert(error.message || "Failed to delete trainer");
-    }
+      const response = await fetch(`${API_URL}/users/${trainerId}`, { method: 'DELETE', headers: getAuthHeaders() });
+      if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to delete trainer'); }
+      alert("Trainer deleted successfully!"); fetchDashboardData();
+    } catch (error) { alert(error.message || "Failed to delete trainer"); }
   };
 
-  const filteredStudents = students.filter(student => {
-    const query = searchQuery.toLowerCase();
-    return student.name.toLowerCase().includes(query) || student.email.toLowerCase().includes(query);
+  const filteredStudents = students.filter(s => {
+    const q = searchQuery.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
+  });
+  const filteredTrainers = trainers.filter(t => {
+    const q = searchQuery.toLowerCase();
+    return t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) || (t.subject && t.subject.toLowerCase().includes(q));
   });
 
-  const filteredTrainers = trainers.filter(trainer => {
-    const query = searchQuery.toLowerCase();
-    return trainer.name.toLowerCase().includes(query) || 
-           trainer.email.toLowerCase().includes(query) ||
-           (trainer.subject && trainer.subject.toLowerCase().includes(query));
-  });
+  const allRecordingClasses = classes.filter(cls => hasAnyRecording(cls)).sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalRecordingParts = allRecordingClasses.reduce((sum, cls) => sum + getClassRecordings(cls).length, 0);
+  const recordingsByTrainer = trainers.map(trainer => ({
+    trainer,
+    recordings: allRecordingClasses.filter(cls => cls.trainer && cls.trainer._id === trainer._id)
+  })).filter(group => group.recordings.length > 0);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  const tabs = ["overview", "batches", "classes", "trainers", "students", "recordings"];
+
   const statsCards = [
-    {
-      label: "Total Students",
-      value: stats.totalUsers,
-      icon: Users,
-      color: "from-black via-zinc-900 to-zinc-700"
-    },
-    {
-      label: "Total Trainers",
-      value: stats.totalTrainers,
-      icon: GraduationCap,
-      color: "from-black via-zinc-900 to-zinc-700"
-    },
-    {
-      label: "Total Batches",
-      value: stats.totalBatches,
-      icon: BookOpen,
-      color: "from-black via-zinc-900 to-zinc-700"
-    },
-    {
-      label: "Total Classes",
-      value: stats.totalClasses,
-      icon: Video,
-      color: "from-black via-zinc-900 to-zinc-700"
-    },
+    { label: "Total Students", value: stats.totalUsers, icon: Users },
+    { label: "Total Trainers", value: stats.totalTrainers, icon: GraduationCap },
+    { label: "Total Batches", value: stats.totalBatches, icon: BookOpen },
+    { label: "Total Classes", value: stats.totalClasses, icon: Video },
   ];
 
   if (loading && batches.length === 0) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <style>{`
-          @font-face {
-            font-family: 'Barlow Condensed';
-            src: url('/fonts/BarlowCondensed-Regular.woff2') format('woff2');
-            font-weight: 400;
-            font-style: normal;
-          }
-          .barlow { font-family: 'Barlow Condensed', sans-serif; }
-        `}</style>
+      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+        <style>{globalStyles}</style>
         <div className="text-center">
-          <Loader className="animate-spin h-12 w-12 text-black mx-auto mb-4" />
-          <p className="barlow text-black">Loading dashboard...</p>
+          <Loader className="animate-spin h-12 w-12 text-[#E8001C] mx-auto mb-4" />
+          <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#0a0a0a]">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <style>{`
-        @font-face {
-          font-family: 'Barlow Condensed';
-          src: url('/fonts/BarlowCondensed-Regular.woff2') format('woff2');
-          font-weight: 400;
-          font-style: normal;
-        }
-        .barlow { font-family: 'Barlow Condensed', sans-serif; }
-      `}</style>
+    <div className="min-h-screen bg-[#f5f5f5]">
+      <style>{globalStyles}</style>
 
-      <div className="bg-black shadow-sm border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      {/* ── Header ───────────────────────────────────────────────────────────── */}
+      <div className="bg-white shadow-sm border-b-2 border-[#e5e7eb]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <img src="/whitelogo.png" alt="Logo" className="h-10 w-auto" />
-              <div className="h-8 w-px bg-white opacity-30"></div>
-              <h1 className="barlow text-2xl font-bold text-white">Admin Dashboard</h1>
+            {/* Left: logo + title */}
+            <div className="flex items-center space-x-3 sm:space-x-6 min-w-0">
+              <img src="/CCALogo.png" alt="Logo" className="h-9 sm:h-12 w-auto flex-shrink-0" />
+              <div className="hidden sm:block h-8 w-px bg-[#e5e7eb]"></div>
+              <h1
+                style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800 }}
+                className="hidden sm:block text-lg sm:text-2xl text-[#0a0a0a] truncate"
+              >
+                Admin Dashboard
+              </h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="barlow text-sm text-white">
-                Welcome, <span className="font-semibold">{user?.name || "Admin"}</span>
+
+            {/* Right: welcome + settings + mobile menu */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className="hidden md:block text-sm text-[#555555]"
+              >
+                Welcome, <span className="font-semibold" style={{color:'#E8001C'}}>{user?.name || "Admin"}</span>
               </div>
+
+              {/* Settings dropdown */}
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                  className="ad-settings-btn"
                 >
-                  <Settings size={20} className="text-white" />
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
                 </button>
-                
                 {showSettingsDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border-2 border-black z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border-2 border-[#e8e8e8] z-50">
+                    <div className="px-4 py-2 border-b border-[#e8e8e8] md:hidden">
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">Signed in as</p>
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{user?.name || "Admin"}</p>
+                    </div>
                     <button
                       onClick={handleLogout}
-                      className="barlow w-full flex items-center space-x-2 px-4 py-3 text-left text-black hover:bg-gray-100 rounded-lg transition-colors"
+                      style={{ fontFamily: 'Poppins, sans-serif' }}
+                      className="w-full flex items-center space-x-2 px-4 py-3 text-left text-[#0a0a0a] hover:bg-[#fff0f0] hover:text-[#E8001C] rounded-lg transition-colors"
                     >
-                      <LogOut size={18} />
-                      <span>Logout</span>
+                      <LogOut size={18} /><span>Logout</span>
                     </button>
                   </div>
                 )}
               </div>
+
+              {/* Mobile hamburger for tab nav */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden p-2 hover:bg-[#f5f5f5] border border-[#e5e7eb] rounded-lg transition-colors"
+              >
+                <Menu size={20} className="text-[#0a0a0a]" />
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       {showSettingsDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowSettingsDropdown(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setShowSettingsDropdown(false)} />
       )}
 
-      <div className="bg-white border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex space-x-8">
-            {["overview", "batches", "classes", "trainers", "students"].map((tab) => (
+      {/* ── Mobile Tab Drawer ─────────────────────────────────────────────────── */}
+      {mobileMenuOpen && (
+        <div className="sm:hidden bg-white border-b-2 border-[#e8e8e8] shadow-md z-30">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
+              style={{ fontFamily: 'Poppins, sans-serif' }}
+              className={`w-full flex items-center justify-between px-6 py-3 text-sm font-medium border-b border-[#f0f0f0] last:border-0 ${activeTab === tab ? "text-[#E8001C] bg-[#fff0f0]" : "text-[#555555]"}`}
+            >
+              <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+              {tab === "recordings" && totalRecordingParts > 0 && (
+                <span className="px-2 py-0.5 bg-[#E8001C] text-white text-xs rounded-full">{totalRecordingParts}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Desktop Tab Bar ───────────────────────────────────────────────────── */}
+      <div className="hidden sm:block bg-white border-b-2 border-[#e8e8e8]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex space-x-2 sm:space-x-8 overflow-x-auto scrollbar-hide">
+            {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`barlow py-4 px-2 border-b-2 font-medium text-sm ${
-                  activeTab === tab ? "border-black text-black" : "border-transparent text-gray-500 hover:text-black"
-                }`}
+                className={`ad-tab${activeTab === tab ? " active" : ""}`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === "recordings" && totalRecordingParts > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-[#E8001C] text-white text-xs rounded-full">{totalRecordingParts}</span>
+                )}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      {/* ── Active tab label on mobile ─────────────────────────────────────────── */}
+      <div className="sm:hidden bg-white border-b border-[#e8e8e8] px-4 py-2 flex items-center justify-between">
+        <span style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">
+          {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+        </span>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          style={{ fontFamily: 'Poppins, sans-serif' }}
+          className="text-xs text-[#E8001C] font-medium flex items-center space-x-1"
+        >
+          <span>Change</span><ChevronDown size={14} />
+        </button>
+      </div>
+
+      {/* ── Main Content ──────────────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+
+        {/* Overview Tab */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="space-y-4 sm:space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {statsCards.map((stat, idx) => (
-                <div key={idx} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
+                <div key={idx} className="stat-card bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="barlow text-black text-sm">{stat.label}</p>
-                      <p className="barlow text-3xl font-bold text-black mt-2">{stat.value}</p>
+                    <div className="min-w-0">
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555] text-xs sm:text-sm truncate">{stat.label}</p>
+                      <p style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800 }} className="stat-num text-2xl sm:text-3xl text-[#0a0a0a] mt-1 sm:mt-2">{stat.value}</p>
                     </div>
-                    <div className={`bg-gradient-to-r ${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
-                      <stat.icon className="text-white" size={24} />
+                    <div className="stat-icon bg-[#fff0f0] w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                      <stat.icon style={{stroke:'#E8001C'}} size={20} />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                <h3 className="barlow text-lg font-semibold text-black mb-4">Today's Classes</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Today's Classes */}
+              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
+                <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base sm:text-lg text-[#0a0a0a] mb-4">Today's Classes</h3>
                 <div className="space-y-3">
                   {(() => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const todayClasses = classes.filter(cls => {
-                      const classDate = new Date(cls.date);
-                      classDate.setHours(0, 0, 0, 0);
-                      return classDate.getTime() === today.getTime();
-                    });
-                    
-                    if (todayClasses.length === 0) {
-                      return <p className="barlow text-sm text-black text-center py-4">No classes scheduled for today</p>;
-                    }
-                    
-                    return todayClasses.slice(0, 3).map((cls) => (
-                      <div key={cls._id} className="flex items-center justify-between p-3 bg-gray-100 rounded-lg border border-black">
-                        <div>
-                          <p className="barlow text-sm font-medium text-black">{cls.className}</p>
-                          <p className="barlow text-xs text-black">
-                            {cls.batch && cls.batch.name ? cls.batch.name : 'N/A'} • {cls.startTime} - {cls.endTime}
-                          </p>
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const todayClasses = classes.filter(cls => { const d = new Date(cls.date); d.setHours(0, 0, 0, 0); return d.getTime() === today.getTime(); });
+                    if (todayClasses.length === 0) return <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] text-center py-4">No classes scheduled for today</p>;
+                    return todayClasses.slice(0, 3).map((cls) => {
+                      const auto = getAutoStatus(cls);
+                      return (
+                        <div key={cls._id} className="flex items-center justify-between p-3 bg-[#f5f5f5] rounded-lg border border-[#e8e8e8]">
+                          <div className="min-w-0 flex-1 mr-2">
+                            <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{cls.className}</p>
+                            <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{cls.batch?.name || 'N/A'} • {cls.startTime} - {cls.endTime}</p>
+                          </div>
+                          <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusColor(auto)}`}>{auto}</span>
                         </div>
-                        <span className={`barlow px-3 py-1 rounded-full text-xs font-medium ${
-                          cls.status === "ongoing" ? "bg-black text-white" : "bg-white text-black border border-black"
-                        }`}>
-                          {cls.status}
-                        </span>
-                      </div>
-                    ));
+                      );
+                    });
                   })()}
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                <h3 className="barlow text-lg font-semibold text-black mb-4">Active Batches</h3>
+              {/* Active Batches */}
+              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
+                <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base sm:text-lg text-[#0a0a0a] mb-4">Active Batches</h3>
                 <div className="space-y-3">
                   {batches.slice(0, 3).map((batch) => (
-                    <div key={batch._id} className="flex items-center justify-between p-3 bg-gray-100 rounded-lg border border-black">
-                      <div>
-                        <p className="barlow text-sm font-medium text-black">{batch.name}</p>
-                        <p className="barlow text-xs text-black">
-                          {batch.subject} • {batch.students && Array.isArray(batch.students) ? batch.students.length : 0} students
-                        </p>
+                    <div key={batch._id} className="flex items-center justify-between p-3 bg-[#f5f5f5] rounded-lg border border-[#e8e8e8]">
+                      <div className="min-w-0 flex-1 mr-2">
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{batch.name}</p>
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{batch.subject} • {batch.students?.length || 0} students</p>
                       </div>
-                      <button onClick={() => handleAssignStudents(batch)} className="barlow text-black hover:underline text-sm font-medium">
-                        Manage
-                      </button>
+                      <button onClick={() => handleAssignStudents(batch)} style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#E8001C] hover:underline text-sm font-medium flex-shrink-0">Manage</button>
                     </div>
                   ))}
-                  {batches.length === 0 && <p className="barlow text-sm text-black text-center py-4">No batches created</p>}
+                  {batches.length === 0 && <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] text-center py-4">No batches created</p>}
                 </div>
               </div>
             </div>
           </div>
         )}
 
+        {/* Batches Tab */}
         {activeTab === "batches" && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="barlow text-xl font-semibold text-black">Manage Batches</h3>
-              <button onClick={handleCreateBatch} className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Manage Batches</h3>
+              <button onClick={handleCreateBatch} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn w-full sm:w-auto">
                 <Plus size={20} /><span>Create Batch</span>
               </button>
             </div>
-
             <div className="grid gap-4">
               {batches.map((batch) => (
-                <div key={batch._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="barlow text-lg font-semibold text-black">{batch.name}</h4>
-                      <p className="barlow text-sm text-black mt-1">{batch.subject}</p>
-                      <div className="barlow flex items-center space-x-4 mt-3 text-sm text-black">
-                        <span>{formatDate(batch.startDate)} - {formatDate(batch.endDate)}</span>
+                <div key={batch._id} className="bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base sm:text-lg text-[#0a0a0a]">{batch.name}</h4>
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] mt-1">{batch.subject}</p>
+                      <div style={{ fontFamily: 'Poppins, sans-serif' }} className="flex flex-wrap items-center gap-2 mt-3 text-xs sm:text-sm text-[#555555]">
+                        <span>{formatDate(batch.startDate)} – {formatDate(batch.endDate)}</span>
                         <span>•</span>
-                        <span>{batch.students && Array.isArray(batch.students) ? batch.students.length : 0} students</span>
+                        <span>{batch.students?.length || 0} students</span>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button onClick={() => handleAssignStudents(batch)} className="p-2 text-black hover:bg-gray-100 rounded-lg border border-black" title="Assign Students">
-                        <UserCheck size={18} />
-                      </button>
-                      <button onClick={() => handleEditBatch(batch)} className="p-2 text-black hover:bg-gray-100 rounded-lg border border-black" title="Edit Batch">
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => handleDeleteBatch(batch._id)} className="p-2 text-white bg-black hover:bg-gray-800 rounded-lg" title="Delete Batch">
-                        <Trash2 size={18} />
-                      </button>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <button onClick={() => handleAssignStudents(batch)} className="ad-icon-btn" title="Assign Students"><UserCheck size={18} /></button>
+                      <button onClick={() => handleEditBatch(batch)} className="ad-icon-btn" title="Edit Batch"><Edit2 size={18} /></button>
+                      <button onClick={() => handleDeleteBatch(batch._id)} className="ad-icon-btn ad-icon-delete" title="Delete Batch"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 </div>
               ))}
               {batches.length === 0 && (
-                <div className="bg-white rounded-xl p-12 text-center border-2 border-black">
-                  <BookOpen className="mx-auto h-12 w-12 text-black mb-4" />
-                  <p className="barlow text-black">No batches created yet</p>
+                <div className="bg-white rounded-xl p-12 text-center border-2 border-[#e8e8e8]">
+                  <BookOpen className="mx-auto h-12 w-12 text-[#555555] mb-4" />
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No batches created yet</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
+        {/* Classes Tab */}
         {activeTab === "classes" && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="barlow text-xl font-semibold text-black">Manage Classes</h3>
-              <button onClick={handleCreateClass} className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Manage Classes</h3>
+              <button onClick={handleCreateClass} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn w-full sm:w-auto">
                 <Plus size={20} /><span>Create Class</span>
               </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-md border-2 border-black overflow-hidden">
+            {/* Mobile: Card View */}
+            <div className="block lg:hidden space-y-3">
+              {classes.map((cls) => {
+                const auto = getAutoStatus(cls);
+                return (
+                  <div key={cls._id} className="bg-white rounded-xl p-4 shadow-md border-2 border-[#e8e8e8]">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="min-w-0 flex-1 mr-3">
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</p>
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.batch?.name || 'N/A'} • {cls.trainer?.name || 'N/A'}</p>
+                      </div>
+                      <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusColor(auto)}`}>{auto}</span>
+                    </div>
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{new Date(cls.date).toLocaleDateString()} • {cls.startTime} – {cls.endTime}</p>
+                    <div className="flex items-center space-x-2 mt-3">
+                      <a href={cls.teamsLink} target="_blank" rel="noopener noreferrer" className="ad-icon-btn"><ExternalLink size={16} /></a>
+                      <button onClick={() => handleEditClass(cls)} className="ad-icon-btn"><Edit2 size={16} /></button>
+                      <button onClick={() => handleDeleteClass(cls._id)} className="ad-icon-btn ad-icon-delete"><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                );
+              })}
+              {classes.length === 0 && (
+                <div className="bg-white rounded-xl p-12 text-center border-2 border-[#e8e8e8]">
+                  <Video className="mx-auto h-12 w-12 text-[#555555] mb-4" />
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No classes scheduled</p>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop: Table View */}
+            <div className="hidden lg:block bg-white rounded-xl shadow-md border-2 border-[#e8e8e8] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-black">
+                  <thead className="bg-[#0a0a0a]">
                     <tr>
-                      <th className="barlow px-6 py-3 text-left text-xs font-medium text-white uppercase">Class Name</th>
-                      <th className="barlow px-6 py-3 text-left text-xs font-medium text-white uppercase">Batch</th>
-                      <th className="barlow px-6 py-3 text-left text-xs font-medium text-white uppercase">Trainer</th>
-                      <th className="barlow px-6 py-3 text-left text-xs font-medium text-white uppercase">Date & Time</th>
-                      <th className="barlow px-6 py-3 text-left text-xs font-medium text-white uppercase">Status</th>
-                      <th className="barlow px-6 py-3 text-left text-xs font-medium text-white uppercase">Actions</th>
+                      {["Class Name", "Batch", "Trainer", "Date & Time", "Status", "Actions"].map(h => (
+                        <th key={h} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">{h}</th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y-2 divide-black">
-                    {classes.map((cls) => (
-                      <tr key={cls._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4"><div className="barlow text-sm font-medium text-black">{cls.className}</div></td>
-                        <td className="barlow px-6 py-4 text-sm text-black">{cls.batch && cls.batch.name ? cls.batch.name : 'N/A'}</td>
-                        <td className="barlow px-6 py-4 text-sm text-black">{cls.trainer && cls.trainer.name ? cls.trainer.name : 'N/A'}</td>
-                        <td className="px-6 py-4">
-                          <div className="barlow text-sm text-black">{new Date(cls.date).toLocaleDateString()}</div>
-                          <div className="barlow text-xs text-black">{cls.startTime} - {cls.endTime}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`barlow px-3 py-1 rounded-full text-xs font-medium ${
-                            cls.status === "ongoing" ? "bg-black text-white" :
-                            cls.status === "completed" ? "bg-gray-300 text-black" :
-                            "bg-white text-black border border-black"
-                          }`}>{cls.status}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            <a href={cls.teamsLink} target="_blank" rel="noopener noreferrer" className="p-2 text-black hover:bg-gray-100 rounded-lg border border-black" title="Open Teams Link">
-                              <ExternalLink size={18} />
-                            </a>
-                            <button onClick={() => handleEditClass(cls)} className="p-2 text-black hover:bg-gray-100 rounded-lg border border-black" title="Edit Class">
-                              <Edit2 size={18} />
-                            </button>
-                            <button onClick={() => handleDeleteClass(cls._id)} className="p-2 text-white bg-black hover:bg-gray-800 rounded-lg" title="Delete Class">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y-2 divide-[#e8e8e8]">
+                    {classes.map((cls) => {
+                      const auto = getAutoStatus(cls);
+                      return (
+                        <tr key={cls._id} className="hover:bg-[#f5f5f5]">
+                          <td className="px-6 py-4"><div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</div></td>
+                          <td style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-4 text-sm text-[#555555]">{cls.batch?.name || 'N/A'}</td>
+                          <td style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-4 text-sm text-[#555555]">{cls.trainer?.name || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#0a0a0a]">{new Date(cls.date).toLocaleDateString()}</div>
+                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.startTime} - {cls.endTime}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(auto)}`}>{auto}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-2">
+                              <a href={cls.teamsLink} target="_blank" rel="noopener noreferrer" className="ad-icon-btn"><ExternalLink size={18} /></a>
+                              <button onClick={() => handleEditClass(cls)} className="ad-icon-btn"><Edit2 size={18} /></button>
+                              <button onClick={() => handleDeleteClass(cls._id)} className="ad-icon-btn ad-icon-delete"><Trash2 size={18} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {classes.length === 0 && (
-                  <div className="text-center py-12">
-                    <Video className="mx-auto h-12 w-12 text-black mb-4" />
-                    <p className="barlow text-black">No classes scheduled</p>
-                  </div>
+                  <div className="text-center py-12"><Video className="mx-auto h-12 w-12 text-[#555555] mb-4" /><p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No classes scheduled</p></div>
                 )}
               </div>
             </div>
           </div>
         )}
 
+        {/* Trainers Tab */}
         {activeTab === "trainers" && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="barlow text-xl font-semibold text-black">Manage Trainers</h3>
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Manage Trainers</h3>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#555555]" size={18} />
                   <input
-                    type="text"
-                    placeholder="Search trainers..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="barlow pl-10 pr-4 py-2 border-2 border-black rounded-lg text-black bg-white text-sm"
+                    type="text" placeholder="Search trainers..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full sm:w-auto pl-10 pr-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white text-sm focus:border-[#E8001C] focus:outline-none"
                   />
                 </div>
-                <button onClick={handleCreateTrainer} className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800">
+                <button onClick={handleCreateTrainer} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn">
                   <Plus size={20} /><span>Add Trainer</span>
                 </button>
               </div>
             </div>
-
             <div className="grid gap-4">
               {filteredTrainers.length > 0 ? filteredTrainers.map((trainer) => (
-                <div key={trainer._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-black via-zinc-900 to-zinc-700 flex items-center justify-center">
-                          <GraduationCap className="text-white" size={24} />
-                        </div>
-                        <div>
-                          <h4 className="barlow text-lg font-semibold text-black">{trainer.name}</h4>
-                          <p className="barlow text-sm text-black">{trainer.email}</p>
-                        </div>
+                <div key={trainer._id} className="bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-[#0a0a0a] to-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="text-white" size={20} />
                       </div>
-                      <div className="barlow flex items-center space-x-4 mt-3 text-sm text-black">
-                        {trainer.subject && (
-                          <>
-                            <span>Subject: {trainer.subject}</span>
-                            {trainer.phone && <span>•</span>}
-                          </>
-                        )}
-                        {trainer.phone && <span>Phone: {trainer.phone}</span>}
+                      <div className="min-w-0">
+                        <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base sm:text-lg text-[#0a0a0a] truncate">{trainer.name}</h4>
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] truncate">{trainer.email}</p>
+                        <div style={{ fontFamily: 'Poppins, sans-serif' }} className="flex flex-wrap gap-2 mt-1 text-xs sm:text-sm text-[#555555]">
+                          {trainer.subject && <span>Subject: {trainer.subject}</span>}
+                          {trainer.phone && <span>Phone: {trainer.phone}</span>}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button onClick={() => handleEditTrainer(trainer)} className="p-2 text-black hover:bg-gray-100 rounded-lg border border-black" title="Edit Trainer">
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => handleDeleteTrainer(trainer._id)} className="p-2 text-white bg-black hover:bg-gray-800 rounded-lg" title="Delete Trainer">
-                        <Trash2 size={18} />
-                      </button>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <button onClick={() => handleEditTrainer(trainer)} className="ad-icon-btn"><Edit2 size={18} /></button>
+                      <button onClick={() => handleDeleteTrainer(trainer._id)} className="ad-icon-btn ad-icon-delete"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 </div>
               )) : (
-                <div className="bg-white rounded-xl p-12 text-center border-2 border-black">
-                  <GraduationCap className="mx-auto h-12 w-12 text-black mb-4" />
-                  <p className="barlow text-black">
-                    {searchQuery ? "No trainers match your search" : "No trainers added yet"}
-                  </p>
+                <div className="bg-white rounded-xl p-12 text-center border-2 border-[#e8e8e8]">
+                  <GraduationCap className="mx-auto h-12 w-12 text-[#555555] mb-4" />
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">{searchQuery ? "No trainers match your search" : "No trainers added yet"}</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
+        {/* Students Tab */}
         {activeTab === "students" && (
-          <div className="space-y-6">
-            <h3 className="barlow text-xl font-semibold text-black">Student Management</h3>
+          <div className="space-y-4 sm:space-y-6">
+            <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Student Management</h3>
             {batches.map((batch) => (
-              <div key={batch._id} className="bg-white rounded-xl p-6 shadow-md border-2 border-black">
-                <div className="flex justify-between items-start mb-4">
+              <div key={batch._id} className="bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
+                <div className="flex flex-col gap-3 mb-4">
                   <div>
-                    <h4 className="barlow text-lg font-semibold text-black">{batch.name}</h4>
-                    <p className="barlow text-sm text-black">
-                      {batch.subject} • {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
-                    </p>
+                    <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base sm:text-lg text-[#0a0a0a]">{batch.name}</h4>
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs sm:text-sm text-[#555555]">{batch.subject} • {formatDate(batch.startDate)} – {formatDate(batch.endDate)}</p>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="relative flex-1 max-w-xs">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#555555]" size={16} />
                       <input
-                        type="text"
-                        placeholder="Search students..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="barlow w-full pl-10 pr-4 py-2 border-2 border-black rounded-lg text-black bg-white text-sm"
+                        type="text" placeholder="Search students..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                        className="w-full pl-9 pr-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white text-sm focus:border-[#E8001C] focus:outline-none"
                       />
                     </div>
-                    <button onClick={() => handleAddStudent(batch)} className="barlow flex items-center space-x-2 px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-100 border-2 border-black">
-                      <UserPlus size={18} /><span>Add Student</span>
-                    </button>
-                    <button onClick={() => handleAssignStudents(batch)} className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800">
-                      <UserCheck size={18} /><span>Assign Students</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleAddStudent(batch)} style={{ fontFamily: 'Poppins, sans-serif' }} className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 py-2 bg-white text-[#0a0a0a] rounded-lg hover:bg-[#f5f5f5] border-2 border-[#e8e8e8] text-sm">
+                        <UserPlus size={16} /><span>Add</span>
+                      </button>
+                      <button onClick={() => handleAssignStudents(batch)} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn flex-1 sm:flex-none text-sm">
+                        <UserCheck size={16} /><span>Assign</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <p className="barlow text-sm font-medium text-black">
-                    Enrolled Students ({batch.students && Array.isArray(batch.students) ? batch.students.length : 0})
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {batch.students && Array.isArray(batch.students) && batch.students.length > 0 ? 
-                      (searchQuery ? 
-                        batch.students.filter(student => {
-                          const query = searchQuery.toLowerCase();
-                          return student.name.toLowerCase().includes(query) || student.email.toLowerCase().includes(query);
-                        }) : batch.students
-                      ).map((student) => (
-                        <div key={student._id} className="flex items-center justify-between p-3 bg-gray-100 rounded-lg border border-black">
-                          <div>
-                            <p className="barlow text-sm font-medium text-black">{student.name}</p>
-                            <p className="barlow text-xs text-black">{student.email}</p>
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">Enrolled Students ({batch.students?.length || 0})</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    {batch.students?.length > 0 ?
+                      (searchQuery ? batch.students.filter(s => { const q = searchQuery.toLowerCase(); return s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q); }) : batch.students)
+                        .map((student) => (
+                          <div key={student._id} className="flex items-center p-3 bg-[#f5f5f5] rounded-lg border border-[#e8e8e8]">
+                            <div className="min-w-0">
+                              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{student.name}</p>
+                              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{student.email}</p>
+                            </div>
                           </div>
-                        </div>
-                      )) : <p className="barlow text-sm text-black col-span-2 text-center py-4">No students assigned yet</p>}
-                    {searchQuery && batch.students && batch.students.filter(student => {
-                      const query = searchQuery.toLowerCase();
-                      return student.name.toLowerCase().includes(query) || student.email.toLowerCase().includes(query);
-                    }).length === 0 && (
-                      <p className="barlow text-sm text-black col-span-2 text-center py-4">No students match your search</p>
-                    )}
+                        ))
+                      : <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] col-span-2 text-center py-4">No students assigned yet</p>}
                   </div>
                 </div>
               </div>
             ))}
             {batches.length === 0 && (
-              <div className="bg-white rounded-xl p-12 text-center border-2 border-black">
-                <Users className="mx-auto h-12 w-12 text-black mb-4" />
-                <p className="barlow text-black">No batches available</p>
+              <div className="bg-white rounded-xl p-12 text-center border-2 border-[#e8e8e8]">
+                <Users className="mx-auto h-12 w-12 text-[#555555] mb-4" />
+                <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No batches available</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recordings Tab */}
+        {activeTab === "recordings" && (
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+              <div>
+                <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">All Recordings</h3>
+                <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs sm:text-sm text-[#555555] mt-1">
+                  {totalRecordingParts} recording part{totalRecordingParts !== 1 ? 's' : ''} across {allRecordingClasses.length} class{allRecordingClasses.length !== 1 ? 'es' : ''}
+                </p>
+              </div>
+              <button onClick={handleOpenAddRecording} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn w-full sm:w-auto">
+                <Plus size={20} /><span>Add Recording</span>
+              </button>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              {[
+                { label: "Total Recording Parts", value: totalRecordingParts },
+                { label: "Trainers with Recordings", value: recordingsByTrainer.length },
+                { label: "Classes Without Recording", value: classes.length - allRecordingClasses.length }
+              ].map((s, i) => (
+                <div key={i} className="bg-white rounded-xl p-3 sm:p-5 border-2 border-[#e8e8e8] shadow-md">
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs sm:text-sm text-[#555555] leading-tight">{s.label}</p>
+                  <p style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800 }} className="text-2xl sm:text-3xl text-[#0a0a0a] mt-1">{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Mobile: Card View */}
+            <div className="block lg:hidden space-y-3">
+              <div className="px-1">
+                <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base text-[#0a0a0a] mb-3">All Recordings — Newest First</h4>
+              </div>
+              {allRecordingClasses.map((cls) => {
+                const parts = getClassRecordings(cls);
+                const auto = getAutoStatus(cls);
+                return (
+                  <div key={cls._id} className="bg-white rounded-xl p-4 shadow-md border-2 border-[#e8e8e8]">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="min-w-0 flex-1 mr-3">
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</p>
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.trainer?.name || 'N/A'} • {cls.batch?.name || 'N/A'}</p>
+                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{formatDate(cls.date)} • {cls.startTime}–{cls.endTime}</p>
+                      </div>
+                      <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusColor(auto)}`}>{auto}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2 mb-3">
+                      {parts.map((part, i) => (
+                        <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
+                          style={{ fontFamily: 'Poppins, sans-serif' }}
+                          className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors">
+                          <PlayCircle size={12} /><span>{part.label}</span>
+                        </a>
+                      ))}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button onClick={() => handleOpenEditRecordings(cls)}
+                        style={{ fontFamily: 'Poppins, sans-serif' }}
+                        className="flex items-center space-x-1 px-3 py-1.5 border-2 border-[#e8e8e8] text-[#0a0a0a] rounded-lg text-xs hover:bg-[#f5f5f5]">
+                        <Edit2 size={14} /><span>Edit Parts</span>
+                      </button>
+                      <a href={cls.teamsLink} target="_blank" rel="noopener noreferrer"
+                        className="ad-icon-btn">
+                        <ExternalLink size={16} />
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+              {allRecordingClasses.length === 0 && (
+                <div className="bg-white rounded-xl p-12 text-center border-2 border-[#e8e8e8]">
+                  <PlayCircle className="mx-auto h-12 w-12 text-[#555555] mb-4" />
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No recordings uploaded yet</p>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop: Table View */}
+            <div className="hidden lg:block bg-white rounded-xl shadow-md border-2 border-[#e8e8e8] overflow-hidden">
+              <div className="px-6 py-4 border-b-2 border-[#e8e8e8] bg-[#f5f5f5]">
+                <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base text-[#0a0a0a]">All Recordings — Newest First</h4>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-[#0a0a0a]">
+                    <tr>
+                      {["Class Name", "Trainer", "Batch", "Date & Time", "Status", "Parts", "Actions"].map(h => (
+                        <th key={h} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-3 text-left text-xs font-semibold text-white uppercase">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y-2 divide-[#e8e8e8]">
+                    {allRecordingClasses.map((cls) => {
+                      const parts = getClassRecordings(cls);
+                      const auto = getAutoStatus(cls);
+                      return (
+                        <tr key={cls._id} className="hover:bg-[#f5f5f5]">
+                          <td className="px-6 py-4">
+                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</div>
+                            {cls.description && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.description}</div>}
+                          </td>
+                          <td style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-4 text-sm text-[#555555]">{cls.trainer?.name || 'N/A'}</td>
+                          <td style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-4 text-sm text-[#555555]">{cls.batch?.name || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#0a0a0a]">{formatDate(cls.date)}</div>
+                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.startTime} - {cls.endTime}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(auto)}`}>{auto}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {parts.map((part, i) => (
+                                <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
+                                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                                  className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors">
+                                  <PlayCircle size={12} /><span>{part.label}</span>
+                                </a>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-2">
+                              <button onClick={() => handleOpenEditRecordings(cls)}
+                                style={{ fontFamily: 'Poppins, sans-serif' }}
+                                className="flex items-center space-x-1 px-3 py-1.5 border-2 border-[#e8e8e8] text-[#0a0a0a] rounded-lg text-xs hover:bg-[#f5f5f5]">
+                                <Edit2 size={14} /><span>Edit Parts</span>
+                              </button>
+                              <a href={cls.teamsLink} target="_blank" rel="noopener noreferrer"
+                                className="ad-icon-btn">
+                                <ExternalLink size={16} />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {allRecordingClasses.length === 0 && (
+                  <div className="text-center py-12">
+                    <PlayCircle className="mx-auto h-12 w-12 text-[#555555] mb-4" />
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No recordings uploaded yet</p>
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] mt-1">Click "Add Recording" above to upload a recording link.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recordings by Trainer */}
+            {recordingsByTrainer.length > 0 && (
+              <div className="space-y-4">
+                <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base sm:text-lg text-[#0a0a0a]">Recordings by Trainer</h4>
+                {recordingsByTrainer.map(({ trainer, recordings }) => (
+                  <div key={trainer._id} className="bg-white rounded-xl border-2 border-[#e8e8e8] shadow-md overflow-hidden">
+                    <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-[#f5f5f5] border-b-2 border-[#e8e8e8]">
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0a0a0a] flex items-center justify-center flex-shrink-0">
+                          <GraduationCap className="text-white" size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{trainer.name}</p>
+                          <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{trainer.email}</p>
+                        </div>
+                      </div>
+                      <span style={{ fontFamily: 'Poppins, sans-serif' }} className="px-2 sm:px-3 py-1 bg-[#0a0a0a] text-white text-xs rounded-full flex-shrink-0 ml-2">
+                        {recordings.reduce((sum, cls) => sum + getClassRecordings(cls).length, 0)} part{recordings.reduce((sum, cls) => sum + getClassRecordings(cls).length, 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-[#e8e8e8]">
+                      {recordings.map((cls) => {
+                        const parts = getClassRecordings(cls);
+                        const auto = getAutoStatus(cls);
+                        return (
+                          <div key={cls._id} className="px-4 sm:px-6 py-4 hover:bg-[#f5f5f5]">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                <PlayCircle size={16} className="text-[#E8001C] flex-shrink-0" />
+                                <div className="min-w-0">
+                                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{cls.className}</p>
+                                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.batch?.name || 'N/A'} • {formatDate(cls.date)} • {cls.startTime}–{cls.endTime}</p>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                                <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(auto)}`}>{auto}</span>
+                                {parts.map((part, i) => (
+                                  <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
+                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    className="flex items-center space-x-1 px-2 py-1.5 bg-[#0a0a0a] text-white rounded-lg text-xs hover:bg-[#E8001C] transition-colors">
+                                    <PlayCircle size={12} /><span>{part.label}</span>
+                                  </a>
+                                ))}
+                                <button onClick={() => handleOpenEditRecordings(cls)} className="ad-icon-btn">
+                                  <Edit2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Batch Modal */}
-      {showModal && modalType === "batch" && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-black">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="barlow text-xl font-semibold text-black">{selectedItem ? "Edit Batch" : "Create New Batch"}</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+      {/* ══════════════════════════════════════════════════════════════════════
+          MODALS — all have max-h + overflow-y-auto + responsive padding
+          ══════════════════════════════════════════════════════════════════════ */}
+
+      {/* Add Recording by Date Modal */}
+      {showModal && modalType === "addRecording" && (
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-lg border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Add Recording</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
             </div>
-            {error && <div className="barlow mb-4 p-3 bg-black text-white rounded-lg text-sm">{error}</div>}
+            {addRecError && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{addRecError}</div>}
             <div className="space-y-4">
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Batch Name *</label>
-                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., VFX Batch 2024-A" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Step 1 — Select the class date *</label>
+                <input type="date" value={addRecDate}
+                  onChange={(e) => { setAddRecDate(e.target.value); setAddRecBatchId(""); setAddRecClassId(""); }}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
+              </div>
+              {addRecDate && (
+                <div>
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Step 2 — Select batch *</label>
+                  <select value={addRecBatchId} onChange={(e) => { setAddRecBatchId(e.target.value); setAddRecClassId(""); }}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
+                    <option value="">Select a batch</option>
+                    {batches.map(b => <option key={b._id} value={b._id}>{b.name} — {b.subject}</option>)}
+                  </select>
+                </div>
+              )}
+              {addRecDate && addRecBatchId && (
+                <div>
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Step 3 — Select class *</label>
+                  {addRecFilteredClasses.length === 0 ? (
+                    <div className="p-3 bg-[#f5f5f5] border-2 border-[#e8e8e8] rounded-lg">
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555]">No classes found for this batch on {new Date(addRecDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.</p>
+                    </div>
+                  ) : (
+                    <select value={addRecClassId} onChange={(e) => setAddRecClassId(e.target.value)}
+                      style={{ fontFamily: 'Poppins, sans-serif' }}
+                      className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
+                      <option value="">Select a class</option>
+                      {addRecFilteredClasses.map(cls => {
+                        const existingCount = getClassRecordings(cls).length;
+                        return (
+                          <option key={cls._id} value={cls._id}>
+                            {cls.className} ({cls.startTime} – {cls.endTime}){existingCount > 0 ? ` — ${existingCount} part${existingCount > 1 ? 's' : ''} already` : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
+                </div>
+              )}
+              {addRecClassId && (() => {
+                const cls = classes.find(c => c._id === addRecClassId);
+                if (!cls) return null;
+                const existingParts = getClassRecordings(cls);
+                const nextPartLabel = `Part ${existingParts.length + 1}`;
+                return (
+                  <div className="p-3 bg-[#f5f5f5] border border-[#e8e8e8] rounded-lg">
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs font-semibold text-[#0a0a0a]">{cls.className}</p>
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.batch?.name} • Trainer: {cls.trainer?.name || 'N/A'} • {cls.startTime}–{cls.endTime}</p>
+                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-1">
+                      {existingParts.length > 0 ? `Existing: ${existingParts.map(p => p.label).join(', ')} — new link will be saved as ` : 'New link will be saved as '}
+                      <strong>{nextPartLabel}</strong>
+                    </p>
+                  </div>
+                );
+              })()}
+              {addRecClassId && (
+                <div>
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Step 4 — Paste Google Drive recording link *</label>
+                  <input type="url" value={addRecLink} onChange={(e) => setAddRecLink(e.target.value)}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none"
+                    placeholder="https://drive.google.com/file/d/..." autoFocus />
+                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-1">Make sure sharing is set to "Anyone with the link" before pasting.</p>
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+                <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+                <button onClick={handleSaveAddRecording} disabled={submitting || !addRecClassId || !addRecLink.trim()}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="ad-btn disabled:opacity-50 order-1 sm:order-2">
+                  {submitting ? <><Loader className="animate-spin" size={18} /><span>Saving...</span></> : <><Save size={18} /><span>Save Recording</span></>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Recording Parts Modal */}
+      {showModal && modalType === "editRecordings" && (
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-lg border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Edit Recording Parts</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
+            </div>
+            <div className="mb-4 p-3 bg-[#f5f5f5] border border-[#e8e8e8] rounded-lg">
+              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{selectedItem?.className}</p>
+              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{selectedItem?.trainer?.name} • {selectedItem?.batch?.name} • {formatDate(selectedItem?.date)}</p>
+            </div>
+            {editRecError && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{editRecError}</div>}
+            <div className="space-y-3 mb-4">
+              {editRecordings.map((part, idx) => (
+                <div key={idx} className="flex items-center space-x-2 sm:space-x-3">
+                  <div className="w-14 sm:w-16 flex-shrink-0">
+                    <span style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs font-semibold text-[#0a0a0a] px-2 py-1 bg-[#f5f5f5] border border-[#e8e8e8] rounded">{part.label}</span>
+                  </div>
+                  <input type="url" value={part.url} onChange={(e) => handleEditRecordingUrl(idx, e.target.value)}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="flex-1 px-3 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white text-sm focus:border-[#E8001C] focus:outline-none min-w-0"
+                    placeholder="https://drive.google.com/file/d/..." />
+                  <button onClick={() => handleRemoveRecordingPart(idx)} className="ad-icon-btn ad-icon-delete flex-shrink-0">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button onClick={handleAddRecordingPart}
+              style={{ fontFamily: 'Poppins, sans-serif' }}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 border-2 border-dashed border-[#e8e8e8] text-[#0a0a0a] rounded-lg hover:bg-[#f5f5f5] mb-4">
+              <Plus size={18} /><span>Add Part {editRecordings.length + 1}</span>
+            </button>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-2 border-t-2 border-[#e8e8e8]">
+              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+              <button onClick={handleSaveEditRecordings} disabled={submitting}
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className="ad-btn disabled:opacity-50 order-1 sm:order-2">
+                {submitting ? <><Loader className="animate-spin" size={18} /><span>Saving...</span></> : <><Save size={18} /><span>Save All Parts</span></>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Modal */}
+      {showModal && modalType === "batch" && (
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-2xl border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">{selectedItem ? "Edit Batch" : "Create New Batch"}</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
+            </div>
+            {error && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{error}</div>}
+            <div className="space-y-4">
+              <div>
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Batch Name *</label>
+                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., VFX Batch 2024-A" />
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Subject *</label>
-                <input type="text" value={formData.subject || ""} onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., Visual Effects" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Subject *</label>
+                <input type="text" value={formData.subject || ""} onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., Visual Effects" />
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Trainer</label>
-                <select value={formData.trainer || ""} onChange={(e) => setFormData({...formData, trainer: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black">
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Trainer</label>
+                <select value={formData.trainer || ""} onChange={(e) => setFormData({ ...formData, trainer: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
                   <option value="">Select Trainer (Optional)</option>
                   {trainers.map(t => <option key={t._id} value={t._id}>{t.name} - {t.subject || 'No Subject'}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">Start Date</label>
-                  <input type="date" value={formData.startDate || ""} onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" />
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Start Date</label>
+                  <input type="date" value={formData.startDate || ""} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
                 </div>
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">End Date</label>
-                  <input type="date" value={formData.endDate || ""} onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" />
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">End Date</label>
+                  <input type="date" value={formData.endDate || ""} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
                 </div>
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button onClick={() => setShowModal(false)} disabled={submitting}
-                  className="barlow px-4 py-2 border-2 border-black rounded-lg text-black hover:bg-gray-50">Cancel</button>
-                <button onClick={handleSaveBatch} disabled={submitting}
-                  className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+                <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+                <button onClick={handleSaveBatch} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn disabled:opacity-50 order-1 sm:order-2">
                   {submitting ? <><Loader className="animate-spin" size={18} /><span>Saving...</span></> : <><Save size={18} /><span>{selectedItem ? "Update" : "Create"}</span></>}
                 </button>
               </div>
@@ -1040,48 +1365,41 @@ export default function AdminDashboard() {
 
       {/* Add Student Modal */}
       {showModal && modalType === "addStudent" && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full border-2 border-black">
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="barlow text-xl font-semibold text-black">Add New Student to {selectedItem?.name}</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Add New Student</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
             </div>
-            {error && <div className="barlow mb-4 p-3 bg-black text-white rounded-lg text-sm">{error}</div>}
+            <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] mb-4">Adding to <strong>{selectedItem?.name}</strong></p>
+            {error && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{error}</div>}
             <div className="space-y-4">
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Student Name *</label>
-                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., John Doe" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Student Name *</label>
+                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., John Doe" />
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Email *</label>
-                <input type="email" value={formData.email || ""} onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="student@example.com" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Email *</label>
+                <input type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="student@example.com" />
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Password *</label>
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Password *</label>
                 <div className="relative">
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    value={formData.password || ""} 
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white pr-10" 
-                    placeholder="Enter password" 
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-black"
-                  >
+                  <input type={showPassword ? "text" : "password"} value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white pr-10 focus:border-[#E8001C] focus:outline-none" placeholder="Enter password" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#555555] hover:text-[#0a0a0a]">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button onClick={() => setShowModal(false)} disabled={submitting}
-                  className="barlow px-4 py-2 border-2 border-black rounded-lg text-black hover:bg-gray-50">Cancel</button>
-                <button onClick={handleSaveNewStudent} disabled={submitting}
-                  className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+                <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+                <button onClick={handleSaveNewStudent} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn disabled:opacity-50 order-1 sm:order-2">
                   {submitting ? <><Loader className="animate-spin" size={18} /><span>Creating...</span></> : <><UserPlus size={18} /><span>Create Student</span></>}
                 </button>
               </div>
@@ -1092,64 +1410,66 @@ export default function AdminDashboard() {
 
       {/* Class Modal */}
       {showModal && modalType === "class" && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-black">
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-2xl border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="barlow text-xl font-semibold text-black">{selectedItem ? "Edit Class" : "Create New Class"}</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">{selectedItem ? "Edit Class" : "Create New Class"}</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
             </div>
-            {error && <div className="barlow mb-4 p-3 bg-black text-white rounded-lg text-sm">{error}</div>}
+            {error && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{error}</div>}
             <div className="space-y-4">
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Class Name *</label>
-                <input type="text" value={formData.className || ""} onChange={(e) => setFormData({...formData, className: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., Introduction to VFX" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Class Name *</label>
+                <input type="text" value={formData.className || ""} onChange={(e) => setFormData({ ...formData, className: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., Introduction to VFX" />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">Batch *</label>
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Batch *</label>
                   <select value={formData.batch || ""} onChange={(e) => handleBatchChange(e.target.value)}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black">
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
                     <option value="">Select Batch</option>
                     {batches.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">Trainer *</label>
-                  <select value={formData.trainer || ""} onChange={(e) => setFormData({...formData, trainer: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black">
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Trainer *</label>
+                  <select value={formData.trainer || ""} onChange={(e) => setFormData({ ...formData, trainer: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
                     <option value="">Select Trainer</option>
                     {trainers.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">Start Time *</label>
-                  <input type="time" value={formData.startTime || ""} onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" />
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Start Time *</label>
+                  <input type="time" value={formData.startTime || ""} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
                 </div>
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">End Time *</label>
-                  <input type="time" value={formData.endTime || ""} onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" />
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">End Time *</label>
+                  <input type="time" value={formData.endTime || ""} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
                 </div>
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">MS Teams Link *</label>
-                <input type="url" value={formData.teamsLink || ""} onChange={(e) => setFormData({...formData, teamsLink: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="https://teams.microsoft.com/..." />
-              </div>
-              <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Recording Link</label>
-                <input type="url" value={formData.recordingLink || ""} onChange={(e) => setFormData({...formData, recordingLink: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="https://..." />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">MS Teams Link *</label>
+                <input type="url" value={formData.teamsLink || ""} onChange={(e) => setFormData({ ...formData, teamsLink: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="https://teams.microsoft.com/..." />
               </div>
               {selectedItem && (
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">Status</label>
-                  <select value={formData.status || ""} onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="barlow w-full px-4 py-2 border-2 border-black rounded-lg bg-white text-black">
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Status</label>
+                  <select value={formData.status || ""} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
                     <option value="scheduled">Scheduled</option>
                     <option value="ongoing">Ongoing</option>
                     <option value="completed">Completed</option>
@@ -1157,15 +1477,14 @@ export default function AdminDashboard() {
                 </div>
               )}
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Description</label>
-                <textarea value={formData.description || ""} onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" rows="3" placeholder="Class description..." />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Description</label>
+                <textarea value={formData.description || ""} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" rows="3" placeholder="Class description..." />
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button onClick={() => setShowModal(false)} disabled={submitting}
-                  className="barlow px-4 py-2 border-2 border-black rounded-lg text-black hover:bg-gray-50">Cancel</button>
-                <button onClick={handleSaveClass} disabled={submitting}
-                  className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+                <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+                <button onClick={handleSaveClass} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn disabled:opacity-50 order-1 sm:order-2">
                   {submitting ? <><Loader className="animate-spin" size={18} /><span>Saving...</span></> : <><Save size={18} /><span>{selectedItem ? "Update" : "Create"}</span></>}
                 </button>
               </div>
@@ -1174,66 +1493,58 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Add/Edit Trainer Modal */}
+      {/* Trainer Modals */}
       {showModal && (modalType === "trainer" || modalType === "editTrainer") && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full border-2 border-black">
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="barlow text-xl font-semibold text-black">
-                {modalType === "editTrainer" ? "Edit Trainer" : "Add New Trainer"}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">{modalType === "editTrainer" ? "Edit Trainer" : "Add New Trainer"}</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
             </div>
-            {error && <div className="barlow mb-4 p-3 bg-black text-white rounded-lg text-sm">{error}</div>}
+            {error && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{error}</div>}
             <div className="space-y-4">
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Name *</label>
-                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., Jane Smith" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Name *</label>
+                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., Jane Smith" />
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Email *</label>
-                <input type="email" value={formData.email || ""} onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="trainer@example.com" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Email *</label>
+                <input type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="trainer@example.com" />
               </div>
               {modalType === "trainer" && (
                 <div>
-                  <label className="barlow block text-sm font-medium text-black mb-1">Password *</label>
+                  <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Password *</label>
                   <div className="relative">
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      value={formData.password || ""} 
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white pr-10" 
-                      placeholder="Enter password" 
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-black"
-                    >
+                    <input type={showPassword ? "text" : "password"} value={formData.password || ""} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      style={{ fontFamily: 'Poppins, sans-serif' }}
+                      className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white pr-10 focus:border-[#E8001C] focus:outline-none" placeholder="Enter password" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#555555] hover:text-[#0a0a0a]">
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
               )}
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Subject/Specialization</label>
-                <input type="text" value={formData.subject || ""} onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., Visual Effects, Animation" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Subject/Specialization</label>
+                <input type="text" value={formData.subject || ""} onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., Visual Effects, Animation" />
               </div>
               <div>
-                <label className="barlow block text-sm font-medium text-black mb-1">Phone Number</label>
-                <input type="tel" value={formData.phone || ""} onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="barlow w-full px-4 py-2 border-2 border-black rounded-lg text-black bg-white" placeholder="e.g., +1 234 567 8900" />
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Phone Number</label>
+                <input type="tel" value={formData.phone || ""} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., +1 234 567 8900" />
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button onClick={() => setShowModal(false)} disabled={submitting}
-                  className="barlow px-4 py-2 border-2 border-black rounded-lg text-black hover:bg-gray-50">Cancel</button>
-                <button 
-                  onClick={modalType === "editTrainer" ? handleUpdateTrainer : handleSaveTrainer} 
-                  disabled={submitting}
-                  className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+                <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+                <button onClick={modalType === "editTrainer" ? handleUpdateTrainer : handleSaveTrainer} disabled={submitting}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="ad-btn disabled:opacity-50 order-1 sm:order-2">
                   {submitting ? <><Loader className="animate-spin" size={18} /><span>{modalType === "editTrainer" ? "Updating..." : "Creating..."}</span></> : <><Save size={18} /><span>{modalType === "editTrainer" ? "Update" : "Create"}</span></>}
                 </button>
               </div>
@@ -1244,55 +1555,45 @@ export default function AdminDashboard() {
 
       {/* Assign Students Modal */}
       {showModal && modalType === "assign" && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-black">
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-2xl border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="barlow text-xl font-semibold text-black">Assign Students to {selectedItem?.name}</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Assign Students</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
             </div>
-            {error && <div className="barlow mb-4 p-3 bg-black text-white rounded-lg text-sm">{error}</div>}
+            <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] mb-1">Assigning to <strong>{selectedItem?.name}</strong></p>
+            {error && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{error}</div>}
             <div className="mb-4">
-              <p className="barlow text-sm text-black mb-3">Select students to assign to this batch. Currently {selectedStudents.length} student(s) selected.</p>
+              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] mb-3">{selectedStudents.length} student(s) selected.</p>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="barlow w-full pl-10 pr-4 py-2 border-2 border-black rounded-lg text-black bg-white"
-                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#555555]" size={18} />
+                <input type="text" placeholder="Search by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full pl-10 pr-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
               </div>
             </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
+            <div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto mb-4">
               {filteredStudents.map((student) => (
                 <div key={student._id} onClick={() => toggleStudentSelection(student._id)}
-                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedStudents.includes(student._id) ? 'bg-gray-200 border-2 border-black' : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
-                  }`}>
-                  <div className="flex items-center space-x-3">
-                    <input type="checkbox" checked={selectedStudents.includes(student._id)} onChange={() => {}}
-                      className="w-4 h-4 text-black rounded" />
-                    <div>
-                      <p className="barlow text-sm font-medium text-black">{student.name}</p>
-                      <p className="barlow text-xs text-black">{student.email}</p>
+                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${selectedStudents.includes(student._id) ? 'bg-[#f5f5f5] border-2 border-[#0a0a0a]' : 'bg-[#f5f5f5] border-2 border-transparent hover:border-[#e8e8e8]'}`}>
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <input type="checkbox" checked={selectedStudents.includes(student._id)} onChange={() => { }} className="w-4 h-4 accent-[#E8001C] rounded flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{student.name}</p>
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{student.email}</p>
                     </div>
                   </div>
                   {student.batch && student.batch._id !== selectedItem?._id && (
-                    <span className="barlow text-xs text-black bg-gray-300 px-2 py-1 rounded">In another batch</span>
+                    <span style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] bg-[#e8e8e8] px-2 py-1 rounded flex-shrink-0 ml-2">In another batch</span>
                   )}
                 </div>
               ))}
-              {filteredStudents.length === 0 && students.length > 0 && (
-                <p className="barlow text-sm text-black text-center py-8">No students match your search</p>
-              )}
-              {students.length === 0 && <p className="barlow text-sm text-black text-center py-8">No students available</p>}
+              {filteredStudents.length === 0 && students.length > 0 && <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] text-center py-8">No students match your search</p>}
+              {students.length === 0 && <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] text-center py-8">No students available</p>}
             </div>
-            <div className="flex justify-end space-x-3 pt-4 border-t-2 border-black">
-              <button onClick={() => setShowModal(false)} disabled={submitting}
-                className="barlow px-4 py-2 border-2 border-black rounded-lg text-black hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSaveStudentAssignment} disabled={submitting}
-                className="barlow flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t-2 border-[#e8e8e8]">
+              <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+              <button onClick={handleSaveStudentAssignment} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn disabled:opacity-50 order-1 sm:order-2">
                 {submitting ? <><Loader className="animate-spin" size={18} /><span>Saving...</span></> : <><Save size={18} /><span>Save Assignment</span></>}
               </button>
             </div>
