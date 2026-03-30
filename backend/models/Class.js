@@ -7,6 +7,11 @@ const classSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+        classType: {
+      type: String,
+      enum: ['longterm', 'single'],
+      default: 'single'
+    },
     batch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Batch',

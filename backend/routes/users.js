@@ -195,4 +195,31 @@ router.put('/:id/assign-batch', protect, adminOnly, async (req, res) => {
   }
 });
 
+// @route   PUT /api/users/:id/change-password
+// @desc    Change user password (Admin only)
+// @access  Private/Admin
+router.put('/:id/change-password', protect, adminOnly, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // ✅ Assign plain text — the pre('save') hook in User model will hash it once
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
