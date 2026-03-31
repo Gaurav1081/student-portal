@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap, PlayCircle, Link, Menu, ChevronDown, KeyRound } from "lucide-react";
+import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap, PlayCircle, Link, Menu, ChevronDown, ChevronUp, KeyRound } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import config from "../../config";
@@ -116,6 +116,41 @@ const globalStyles = `
 }
 .class-type-card:hover { border-color:#E8001C; background:#fff8f8; }
 .class-type-card.selected { border-color:#E8001C; background:#fff0f0; }
+
+.rec-accordion {
+  border: 1.5px solid #e8e8e8;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.rec-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: #f5f5f5;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  gap: 0.5rem;
+}
+.rec-accordion-header:hover { background: #ffe8e8; }
+.rec-accordion-body {
+  padding: 0.5rem 0.75rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: #ffffff;
+}
+.rec-date-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #f0f0f0;
+  border-radius: 7px;
+  background: #fafafa;
+}
 `;
 
 const getAutoStatus = (cls) => {
@@ -141,7 +176,7 @@ const statusColor = (status) => {
 
 const getClassRecordings = (cls) => {
   if (cls.recordings && cls.recordings.length > 0) {
-    return cls.recordings.map((r, i) => ({ label: r.label || `Part ${i + 1}`, url: r.url }));
+    return cls.recordings.map((r, i) => ({ label: r.label || ("Part " + (i + 1)), url: r.url }));
   }
   if (cls.recordingLink && cls.recordingLink.trim() !== '') {
     return [{ label: 'Part 1', url: cls.recordingLink }];
@@ -149,7 +184,78 @@ const getClassRecordings = (cls) => {
   return [];
 };
 
+const getLongtermRecordingsByDate = (cls) => {
+  const all = cls.recordings || [];
+  const groups = {};
+  all.forEach(r => {
+    if (r.label && r.label.includes(" | ")) {
+      const [date, partLabel] = r.label.split(" | ");
+      if (!groups[date]) groups[date] = [];
+      groups[date].push({ label: partLabel, url: r.url });
+    } else {
+      if (!groups["Other"]) groups["Other"] = [];
+      groups["Other"].push({ label: r.label || "Part 1", url: r.url });
+    }
+  });
+  return Object.entries(groups)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, parts]) => ({ date, parts }));
+};
+
 const hasAnyRecording = (cls) => getClassRecordings(cls).length > 0;
+
+// Collapsible long-term recordings accordion component
+function LongtermRecordingsAccordion({ dateGroups, formatDate }) {
+  const [open, setOpen] = useState(false);
+  const totalParts = dateGroups.reduce((sum, g) => sum + g.parts.length, 0);
+
+  return (
+    <div className="rec-accordion">
+      <div className="rec-accordion-header" onClick={() => setOpen(o => !o)}>
+        <div className="flex items-center gap-2 min-w-0">
+          <PlayCircle size={13} style={{ color: '#E8001C', flexShrink: 0 }} />
+          <span style={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.75rem', fontWeight: 600, color: '#0a0a0a' }}>
+            {dateGroups.length} date{dateGroups.length !== 1 ? 's' : ''} · {totalParts} part{totalParts !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+          <span style={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.7rem', color: '#E8001C', fontWeight: 600 }}>
+            {open ? 'Hide' : 'Show'}
+          </span>
+          {open
+            ? <ChevronUp size={14} style={{ color: '#E8001C' }} />
+            : <ChevronDown size={14} style={{ color: '#E8001C' }} />
+          }
+        </div>
+      </div>
+      {open && (
+        <div className="rec-accordion-body">
+          {dateGroups.map(({ date, parts }) => (
+            <div key={date} className="rec-date-row">
+              <span style={{ fontFamily: 'Poppins, sans-serif', fontSize: '0.7rem', fontWeight: 600, color: '#555555' }}>
+                {date === 'Other' ? 'Other' : formatDate(date + 'T00:00:00')}
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                {parts.map((part, i) => (
+                  <a
+                    key={i}
+                    href={part.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                    className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors"
+                  >
+                    <PlayCircle size={11} /><span>{part.label}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const { user, logout, loading: authLoading } = useAuth();
@@ -173,7 +279,6 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Class creation type: "longterm" | "single"
   const [classCreationType, setClassCreationType] = useState("single");
 
   const [editRecordings, setEditRecordings] = useState([]);
@@ -185,7 +290,6 @@ export default function AdminDashboard() {
   const [addRecLink, setAddRecLink] = useState("");
   const [addRecError, setAddRecError] = useState("");
 
-  // Change password modal state
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changePassError, setChangePassError] = useState("");
@@ -295,7 +399,6 @@ export default function AdminDashboard() {
 
   const handleEditClass = (classItem) => {
     setModalType("class"); setSelectedItem(classItem);
-    // Detect type from stored field or fallback
     setClassCreationType(classItem.classType || "single");
     setFormData({
       className: classItem.className || "",
@@ -313,7 +416,6 @@ export default function AdminDashboard() {
     const selectedBatch = batches.find(b => b._id === batchId);
     setFormData(prev => ({
       ...prev, batch: batchId,
-      // For longterm: prefill start/end from batch; for single: clear date
       date: classCreationType === "longterm"
         ? (selectedBatch?.startDate ? new Date(selectedBatch.startDate).toISOString().split('T')[0] : "")
         : prev.date,
@@ -325,7 +427,6 @@ export default function AdminDashboard() {
   const handleSaveClass = async () => {
     setSubmitting(true); setError("");
 
-    // Validate required fields
     const requiredFields = {
       'Class Name': formData.className,
       'Batch': formData.batch,
@@ -335,7 +436,6 @@ export default function AdminDashboard() {
       'MS Teams Link': formData.teamsLink
     };
 
-    // For single lecture, date is also required
     if (classCreationType === "single") {
       requiredFields['Date'] = formData.date;
     }
@@ -345,7 +445,6 @@ export default function AdminDashboard() {
 
     const selectedBatch = batches.find(b => b._id === formData.batch);
 
-    // For longterm, use batch start date as the class date
     const classDate = classCreationType === "longterm"
       ? selectedBatch?.startDate
       : formData.date;
@@ -357,7 +456,7 @@ export default function AdminDashboard() {
       const classPayload = {
         ...formData,
         date: classDate,
-        classType: classCreationType, // store the type
+        classType: classCreationType,
       };
       const response = selectedItem
         ? await fetch(`${API_URL}/classes/${selectedItem._id}`, { method: 'PUT', headers, body: JSON.stringify(classPayload) })
@@ -381,7 +480,6 @@ export default function AdminDashboard() {
   const handleOpenEditRecordings = (classItem) => {
     setSelectedItem(classItem);
     const existing = getClassRecordings(classItem);
-    // Always show at least one empty row so user can add
     setEditRecordings(existing.length > 0 ? existing.map(r => ({ ...r })) : [{ label: 'Part 1', url: '' }]);
     setEditRecError("");
     setModalType("editRecordings");
@@ -390,11 +488,10 @@ export default function AdminDashboard() {
   const handleAddRecordingPart = () => {
     setEditRecordings(prev => [...prev, { label: `Part ${prev.length + 1}`, url: '' }]);
   };
-  // FIX: Allow deleting even single recordings — no minimum enforced in UI
   const handleRemoveRecordingPart = (idx) => {
     setEditRecordings(prev => {
       const updated = prev.filter((_, i) => i !== idx).map((r, i) => ({ ...r, label: `Part ${i + 1}` }));
-      return updated; // can be empty — save will clear recordings
+      return updated;
     });
   };
   const handleEditRecordingUrl = (idx, url) => {
@@ -402,7 +499,6 @@ export default function AdminDashboard() {
   };
   const handleSaveEditRecordings = async () => {
     setSubmitting(true); setEditRecError("");
-    // Allow saving with zero recordings (to clear all), but if there are parts, all must have URLs
     if (editRecordings.length > 0 && editRecordings.some(r => r.url.trim() === '')) {
       setEditRecError("Please fill in all recording links or remove empty ones");
       setSubmitting(false); return;
@@ -436,15 +532,20 @@ export default function AdminDashboard() {
   };
   const addRecFilteredClasses = classes.filter(cls => {
     if (!addRecDate || !addRecBatchId) return false;
-    const clsDate = new Date(cls.date);
-    const clsDateStr = `${clsDate.getFullYear()}-${String(clsDate.getMonth() + 1).padStart(2, '0')}-${String(clsDate.getDate()).padStart(2, '0')}`;
-    // For longterm classes, also match if date is within batch range
     const batchMatches = (cls.batch?._id || cls.batch) === addRecBatchId;
     if (!batchMatches) return false;
+
     if (cls.classType === "longterm") {
-      // For longterm classes, show them on any date — let user pick a date override
-      return true;
+      const batch = batches.find(b => b._id === addRecBatchId);
+      if (!batch?.startDate || !batch?.endDate) return true;
+      const selected = new Date(addRecDate + 'T00:00:00');
+      const batchStart = new Date(batch.startDate); batchStart.setHours(0,0,0,0);
+      const batchEnd = new Date(batch.endDate); batchEnd.setHours(23,59,59,999);
+      return selected >= batchStart && selected <= batchEnd;
     }
+
+    const clsDate = new Date(cls.date);
+    const clsDateStr = `${clsDate.getFullYear()}-${String(clsDate.getMonth() + 1).padStart(2, '0')}-${String(clsDate.getDate()).padStart(2, '0')}`;
     return clsDateStr === addRecDate;
   });
   const handleSaveAddRecording = async () => {
@@ -455,33 +556,50 @@ export default function AdminDashboard() {
     if (!addRecLink.trim()) { setAddRecError("Please paste the Google Drive recording link"); setSubmitting(false); return; }
     const targetClass = classes.find(c => c._id === addRecClassId);
     if (!targetClass) { setAddRecError("Class not found"); setSubmitting(false); return; }
-    const existingRecordings = getClassRecordings(targetClass);
-    const newPartLabel = `Part ${existingRecordings.length + 1}`;
-    const updatedRecordings = [
-      ...existingRecordings.map((r, i) => ({ label: `Part ${i + 1}`, url: r.url })),
-      { label: newPartLabel, url: addRecLink.trim() },
-    ];
+
+    let updatedRecordings;
+    let newPartLabel;
+    let dateToUse;
+
+    if (targetClass.classType === "longterm") {
+      dateToUse = addRecDate;
+      const allExisting = targetClass.recordings || [];
+      const datePrefix = addRecDate + " |";
+      const sameDayParts = allExisting.filter(r => r.label && r.label.startsWith(datePrefix));
+      const nextPartNum = sameDayParts.length + 1;
+      newPartLabel = addRecDate + " | Part " + nextPartNum;
+      updatedRecordings = [...allExisting, { label: newPartLabel, url: addRecLink.trim() }];
+    } else {
+      dateToUse = targetClass.date;
+      const existingRecordings = getClassRecordings(targetClass);
+      newPartLabel = "Part " + (existingRecordings.length + 1);
+      updatedRecordings = [
+        ...existingRecordings.map((r, i) => ({ label: "Part " + (i + 1), url: r.url })),
+        { label: newPartLabel, url: addRecLink.trim() },
+      ];
+    }
+
     try {
-      // For longterm classes, update the date to the selected recording date
-      const dateToUse = targetClass.classType === "longterm" ? addRecDate : targetClass.date;
       const payload = {
         className: targetClass.className,
         batch: targetClass.batch?._id || targetClass.batch,
         trainer: targetClass.trainer?._id || targetClass.trainer,
         date: dateToUse,
         startTime: targetClass.startTime,
-        endTime: targetClass.endTime, teamsLink: targetClass.teamsLink,
-        description: targetClass.description, status: targetClass.status,
+        endTime: targetClass.endTime,
+        teamsLink: targetClass.teamsLink,
+        description: targetClass.description,
+        status: targetClass.status,
         classType: targetClass.classType,
         recordings: updatedRecordings,
         recordingLink: updatedRecordings[0]?.url || '',
       };
-      const response = await fetch(`${API_URL}/classes/${targetClass._id}`, {
+      const response = await fetch(API_URL + "/classes/" + targetClass._id, {
         method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(payload),
       });
       if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to save recording'); }
       setShowModal(false);
-      alert(`Recording added as ${newPartLabel}!`);
+      alert("Recording added as " + newPartLabel + "!");
       fetchDashboardData();
     } catch (err) { setAddRecError(err.message || "Failed to save recording link"); } finally { setSubmitting(false); }
   };
@@ -1026,7 +1144,6 @@ export default function AdminDashboard() {
                               <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{student.name}</p>
                               <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{student.email}</p>
                             </div>
-                            {/* Change Password + Delete buttons */}
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <button
                                 onClick={() => handleOpenChangePassword(student)}
@@ -1090,30 +1207,44 @@ export default function AdminDashboard() {
             {/* Mobile: Card View */}
             <div className="block lg:hidden space-y-3">
               <div className="px-1">
-                <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base text-[#0a0a0a] mb-3">All Recordings — Newest First</h4>
+                <h4 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-base text-[#0a0a0a] mb-3">All Recordings - Newest First</h4>
               </div>
               {allRecordingClasses.map((cls) => {
-                const parts = getClassRecordings(cls);
                 const auto = getAutoStatus(cls);
+                const isLongterm = cls.classType === "longterm";
+                const dateGroups = isLongterm ? getLongtermRecordingsByDate(cls) : null;
+                const singleParts = isLongterm ? null : getClassRecordings(cls);
                 return (
                   <div key={cls._id} className="bg-white rounded-xl p-4 shadow-md border-2 border-[#e8e8e8]">
                     <div className="flex items-start justify-between mb-2">
                       <div className="min-w-0 flex-1 mr-3">
-                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</p>
+                          {isLongterm && <span style={{ fontFamily: 'Poppins, sans-serif', }} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Long-Term</span>}
+                        </div>
                         <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.trainer?.name || 'N/A'} • {cls.batch?.name || 'N/A'}</p>
-                        <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{formatDate(cls.date)} • {cls.startTime}–{cls.endTime}</p>
+                        {!isLongterm && <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{formatDate(cls.date)} • {cls.startTime}–{cls.endTime}</p>}
                       </div>
                       <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusColor(auto)}`}>{auto}</span>
                     </div>
-                    <div className="flex flex-wrap gap-1 mt-2 mb-3">
-                      {parts.map((part, i) => (
-                        <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
-                          style={{ fontFamily: 'Poppins, sans-serif' }}
-                          className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors">
-                          <PlayCircle size={12} /><span>{part.label}</span>
-                        </a>
-                      ))}
+
+                    {/* MOBILE: Accordion for longterm, pills for single */}
+                    <div className="mb-3">
+                      {isLongterm ? (
+                        <LongtermRecordingsAccordion dateGroups={dateGroups} formatDate={formatDate} />
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {singleParts.map((part, i) => (
+                            <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
+                              style={{ fontFamily: 'Poppins, sans-serif' }}
+                              className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors">
+                              <PlayCircle size={12} /><span>{part.label}</span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
+
                     <div className="flex items-center space-x-2">
                       <button onClick={() => handleOpenEditRecordings(cls)}
                         style={{ fontFamily: 'Poppins, sans-serif' }}
@@ -1151,33 +1282,49 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y-2 divide-[#e8e8e8]">
                     {allRecordingClasses.map((cls) => {
-                      const parts = getClassRecordings(cls);
                       const auto = getAutoStatus(cls);
+                      const isLongterm = cls.classType === "longterm";
+                      const dateGroups = isLongterm ? getLongtermRecordingsByDate(cls) : null;
+                      const singleParts = isLongterm ? null : getClassRecordings(cls);
                       return (
                         <tr key={cls._id} className="hover:bg-[#f5f5f5]">
                           <td className="px-6 py-4">
-                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</div>
+                            <div className="flex items-center gap-2">
+                              <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{cls.className}</div>
+                              {isLongterm && <span style={{ fontFamily: 'Poppins, sans-serif' }} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Long-Term</span>}
+                            </div>
                             {cls.description && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.description}</div>}
                           </td>
                           <td style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-4 text-sm text-[#555555]">{cls.trainer?.name || 'N/A'}</td>
                           <td style={{ fontFamily: 'Poppins, sans-serif' }} className="px-6 py-4 text-sm text-[#555555]">{cls.batch?.name || 'N/A'}</td>
                           <td className="px-6 py-4">
-                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#0a0a0a]">{formatDate(cls.date)}</div>
-                            <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.startTime} - {cls.endTime}</div>
+                            {isLongterm ? (
+                              <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555]">Batch period • {cls.startTime}–{cls.endTime}</div>
+                            ) : (
+                              <>
+                                <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#0a0a0a]">{formatDate(cls.date)}</div>
+                                <div style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.startTime} - {cls.endTime}</div>
+                              </>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(auto)}`}>{auto}</span>
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-1">
-                              {parts.map((part, i) => (
-                                <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontFamily: 'Poppins, sans-serif' }}
-                                  className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors">
-                                  <PlayCircle size={12} /><span>{part.label}</span>
-                                </a>
-                              ))}
-                            </div>
+                          {/* DESKTOP: Accordion for longterm, pills for single */}
+                          <td className="px-6 py-4" style={{ minWidth: '180px', maxWidth: '260px' }}>
+                            {isLongterm ? (
+                              <LongtermRecordingsAccordion dateGroups={dateGroups} formatDate={formatDate} />
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {singleParts.map((part, i) => (
+                                  <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
+                                    style={{ fontFamily: 'Poppins, sans-serif' }}
+                                    className="flex items-center space-x-1 px-2 py-1 bg-[#0a0a0a] text-white rounded text-xs hover:bg-[#E8001C] transition-colors">
+                                    <PlayCircle size={12} /><span>{part.label}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-2">
@@ -1227,21 +1374,32 @@ export default function AdminDashboard() {
                     </div>
                     <div className="divide-y divide-[#e8e8e8]">
                       {recordings.map((cls) => {
-                        const parts = getClassRecordings(cls);
                         const auto = getAutoStatus(cls);
+                        const isLongterm = cls.classType === "longterm";
+                        const dateGroups = isLongterm ? getLongtermRecordingsByDate(cls) : null;
+                        const singleParts = isLongterm ? null : getClassRecordings(cls);
                         return (
                           <div key={cls._id} className="px-4 sm:px-6 py-4 hover:bg-[#f5f5f5]">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                              <div className="flex items-center space-x-3 min-w-0 flex-1">
-                                <PlayCircle size={16} className="text-[#E8001C] flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{cls.className}</p>
-                                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.batch?.name || 'N/A'} • {formatDate(cls.date)} • {cls.startTime}–{cls.endTime}</p>
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                              <div className="flex items-start space-x-3 min-w-0 flex-1">
+                                <PlayCircle size={16} className="text-[#E8001C] flex-shrink-0 mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a] truncate">{cls.className}</p>
+                                    {isLongterm && <span style={{ fontFamily: 'Poppins, sans-serif' }} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Long-Term</span>}
+                                  </div>
+                                  <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{cls.batch?.name || 'N/A'} • {isLongterm ? "batch period" : formatDate(cls.date)} • {cls.startTime}–{cls.endTime}</p>
+                                  {/* TRAINER SECTION: Accordion for longterm */}
+                                  {isLongterm && (
+                                    <div className="mt-2" style={{ maxWidth: '320px' }}>
+                                      <LongtermRecordingsAccordion dateGroups={dateGroups} formatDate={formatDate} />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                                 <span style={{ fontFamily: 'Poppins, sans-serif' }} className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(auto)}`}>{auto}</span>
-                                {parts.map((part, i) => (
+                                {!isLongterm && singleParts.map((part, i) => (
                                   <a key={i} href={part.url} target="_blank" rel="noopener noreferrer"
                                     style={{ fontFamily: 'Poppins, sans-serif' }}
                                     className="flex items-center space-x-1 px-2 py-1.5 bg-[#0a0a0a] text-white rounded-lg text-xs hover:bg-[#E8001C] transition-colors">
@@ -1279,11 +1437,7 @@ export default function AdminDashboard() {
             </div>
             <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm text-[#555555] mb-5">Select the type of class you want to create.</p>
             <div className="space-y-3 mb-6">
-              {/* Long-Term Class */}
-              <div
-                onClick={() => setClassCreationType("longterm")}
-                className={`class-type-card ${classCreationType === "longterm" ? "selected" : ""}`}
-              >
+              <div onClick={() => setClassCreationType("longterm")} className={`class-type-card ${classCreationType === "longterm" ? "selected" : ""}`}>
                 <div className="flex items-start gap-3">
                   <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${classCreationType === "longterm" ? "border-[#E8001C] bg-[#E8001C]" : "border-[#e8e8e8]"}`}>
                     {classCreationType === "longterm" && <div className="w-2 h-2 rounded-full bg-white"></div>}
@@ -1291,7 +1445,7 @@ export default function AdminDashboard() {
                   <div>
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">Long-Term Class (Batch Duration)</p>
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-1">
-                      A recurring class that runs for the entire batch period (e.g. 31 Mar 2026 – 31 Mar 2027). Daily recordings are added separately via "Add Recording".
+                      A recurring class that runs for the entire batch period. Daily recordings are added separately via "Add Recording".
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       <span style={{ fontFamily: 'Poppins, sans-serif' }} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">2D Animation</span>
@@ -1301,12 +1455,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-
-              {/* Single / Extra Lecture */}
-              <div
-                onClick={() => setClassCreationType("single")}
-                className={`class-type-card ${classCreationType === "single" ? "selected" : ""}`}
-              >
+              <div onClick={() => setClassCreationType("single")} className={`class-type-card ${classCreationType === "single" ? "selected" : ""}`}>
                 <div className="flex items-start gap-3">
                   <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${classCreationType === "single" ? "border-[#E8001C] bg-[#E8001C]" : "border-[#e8e8e8]"}`}>
                     {classCreationType === "single" && <div className="w-2 h-2 rounded-full bg-white"></div>}
@@ -1314,7 +1463,7 @@ export default function AdminDashboard() {
                   <div>
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">Single / Extra Lecture</p>
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-1">
-                      A one-off class on a specific date. Use this for extra lectures, makeup classes, workshops, or guest sessions.
+                      A one-off class on a specific date. Use for extra lectures, makeup classes, workshops, or guest sessions.
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       <span style={{ fontFamily: 'Poppins, sans-serif' }} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Extra Lecture</span>
@@ -1327,9 +1476,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-2 border-t-2 border-[#e8e8e8]">
               <button onClick={() => setShowModal(false)} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
-              <button onClick={handleProceedClassCreation} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn order-1 sm:order-2">
-                Continue →
-              </button>
+              <button onClick={handleProceedClassCreation} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn order-1 sm:order-2">Continue →</button>
             </div>
           </div>
         </div>
@@ -1377,7 +1524,6 @@ export default function AdminDashboard() {
                     <option value="">Select Batch</option>
                     {batches.map(b => <option key={b._id} value={b._id}>{b.name}{b.startDate ? ` (${new Date(b.startDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})} – ${new Date(b.endDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})})` : ''}</option>)}
                   </select>
-                  {/* Show batch date range info for longterm */}
                   {classCreationType === "longterm" && formData.startDate && (
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-blue-600 mt-1">
                       Class period: {formatDate(formData.startDate)} – {formatDate(formData.endDate)}
@@ -1394,8 +1540,6 @@ export default function AdminDashboard() {
                   </select>
                 </div>
               </div>
-
-              {/* Only show date picker for single/extra lectures */}
               {(classCreationType === "single" || selectedItem) && (
                 <div>
                   <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">
@@ -1406,7 +1550,6 @@ export default function AdminDashboard() {
                     className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" />
                 </div>
               )}
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Start Time *</label>
@@ -1497,10 +1640,14 @@ export default function AdminDashboard() {
                       className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg bg-white text-[#0a0a0a] focus:border-[#E8001C] focus:outline-none">
                       <option value="">Select a class</option>
                       {addRecFilteredClasses.map(cls => {
-                        const existingCount = getClassRecordings(cls).length;
+                        const isLT = cls.classType === 'longterm';
+                        const datePrefix = addRecDate + ' |';
+                        const sameDayCount = isLT
+                          ? (cls.recordings || []).filter(r => r.label && r.label.startsWith(datePrefix)).length
+                          : getClassRecordings(cls).length;
                         return (
                           <option key={cls._id} value={cls._id}>
-                            {cls.className} {cls.classType === 'longterm' ? '(Long-Term)' : ''} ({cls.startTime} – {cls.endTime}){existingCount > 0 ? ` — ${existingCount} part${existingCount > 1 ? 's' : ''} already` : ''}
+                            {cls.className} {isLT ? '(Long-Term)' : ''} ({cls.startTime} – {cls.endTime}){sameDayCount > 0 ? ' — ' + sameDayCount + ' part' + (sameDayCount > 1 ? 's' : '') + ' today' : ''}
                           </option>
                         );
                       })}
@@ -1511,15 +1658,26 @@ export default function AdminDashboard() {
               {addRecClassId && (() => {
                 const cls = classes.find(c => c._id === addRecClassId);
                 if (!cls) return null;
-                const existingParts = getClassRecordings(cls);
-                const nextPartLabel = `Part ${existingParts.length + 1}`;
+                const isLongterm = cls.classType === "longterm";
+                const allParts = cls.recordings || [];
+                const datePrefix = addRecDate + " |";
+                const sameDayParts = isLongterm
+                  ? allParts.filter(r => r.label && r.label.startsWith(datePrefix))
+                  : getClassRecordings(cls);
+                const nextPartNum = sameDayParts.length + 1;
+                const nextPartLabel = isLongterm
+                  ? (addRecDate + " | Part " + nextPartNum)
+                  : ("Part " + nextPartNum);
                 return (
                   <div className="p-3 bg-[#f5f5f5] border border-[#e8e8e8] rounded-lg">
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs font-semibold text-[#0a0a0a]">{cls.className}</p>
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{cls.batch?.name} • Trainer: {cls.trainer?.name || 'N/A'} • {cls.startTime}–{cls.endTime}</p>
+                    {isLongterm && (
+                      <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-blue-600 mt-0.5">Recordings for {addRecDate}: {sameDayParts.length} part(s) already saved</p>
+                    )}
                     <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-1">
-                      {existingParts.length > 0 ? `Existing: ${existingParts.map(p => p.label).join(', ')} — new link will be saved as ` : 'New link will be saved as '}
-                      <strong>{nextPartLabel}</strong>
+                      {sameDayParts.length > 0 ? "Existing today: " + sameDayParts.map(p => p.label.replace(addRecDate + " | ", "")).join(", ") + " — new link will be saved as " : "New link will be saved as "}
+                      <strong>{isLongterm ? ("Part " + nextPartNum) : nextPartLabel}</strong>
                     </p>
                   </div>
                 );
@@ -1560,13 +1718,11 @@ export default function AdminDashboard() {
               <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] mt-0.5">{selectedItem?.trainer?.name} • {selectedItem?.batch?.name} • {formatDate(selectedItem?.date)}</p>
             </div>
             {editRecError && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{editRecError}</div>}
-
             {editRecordings.length === 0 && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-amber-700">All recordings removed. Saving will clear recordings for this class.</p>
               </div>
             )}
-
             <div className="space-y-3 mb-4">
               {editRecordings.map((part, idx) => (
                 <div key={idx} className="flex items-center space-x-2 sm:space-x-3">
@@ -1577,7 +1733,6 @@ export default function AdminDashboard() {
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                     className="flex-1 px-3 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white text-sm focus:border-[#E8001C] focus:outline-none min-w-0"
                     placeholder="https://drive.google.com/file/d/..." />
-                  {/* FIX: Delete button always visible, no minimum enforced */}
                   <button onClick={() => handleRemoveRecordingPart(idx)} className="ad-icon-btn ad-icon-delete flex-shrink-0" title="Delete this recording">
                     <Trash2 size={16} />
                   </button>

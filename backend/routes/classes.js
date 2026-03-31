@@ -12,27 +12,20 @@ router.get('/', protect, async (req, res) => {
   try {
     let query = {};
 
-    // Filter by batch if provided
     if (req.query.batch) {
       query.batch = req.query.batch;
     }
 
-    // Filter by trainer if provided
     if (req.query.trainer) {
       query.trainer = req.query.trainer;
     }
 
-    // Filter by date if provided
     if (req.query.date) {
       const startOfDay = new Date(req.query.date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(req.query.date);
       endOfDay.setHours(23, 59, 59, 999);
-      
-      query.date = {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      };
+      query.date = { $gte: startOfDay, $lte: endOfDay };
     }
 
     const classes = await Class.find(query)
@@ -47,34 +40,26 @@ router.get('/', protect, async (req, res) => {
 });
 
 // @route   GET /api/classes/my-classes
-// @desc    Get classes for logged-in user (trainer sees their classes, learner sees batch classes)
+// @desc    Get classes for logged-in user
 // @access  Private
 router.get('/my-classes', protect, async (req, res) => {
   try {
     let classes;
 
     if (req.user.role === 'trainer') {
-      // Trainers see only their classes
       classes = await Class.find({ trainer: req.user._id })
         .populate('batch', 'name subject')
         .populate('trainer', 'name email')
         .sort({ date: 1, startTime: 1 });
     } else if (req.user.role === 'learner') {
-      // Learners see classes from ALL batches they're assigned to
       const batches = await Batch.find({ students: req.user._id }).select('_id');
-      
-      if (batches.length === 0) {
-        return res.json([]);
-      }
-      
+      if (batches.length === 0) return res.json([]);
       const batchIds = batches.map(batch => batch._id);
-      
       classes = await Class.find({ batch: { $in: batchIds } })
         .populate('batch', 'name subject')
         .populate('trainer', 'name email')
         .sort({ date: 1, startTime: 1 });
     } else if (req.user.role === 'admin') {
-      // Admins see all classes
       classes = await Class.find({})
         .populate('batch', 'name subject')
         .populate('trainer', 'name email')
@@ -113,10 +98,10 @@ router.post('/', protect, trainerOrAdmin, async (req, res) => {
   try {
     const {
       className, batch, trainer, date, startTime, endTime,
-      teamsLink, description, recordingLink, recordings
+      teamsLink, description, recordingLink, recordings,
+      classType  // ← ADDED
     } = req.body;
 
-    // If user is a trainer, they can only create classes for themselves
     const finalTrainer = req.user.role === 'trainer' ? req.user._id : trainer;
 
     const classItem = await Class.create({
@@ -130,6 +115,7 @@ router.post('/', protect, trainerOrAdmin, async (req, res) => {
       description,
       recordingLink: recordingLink || '',
       recordings: recordings || [],
+      classType: classType || 'single',  // ← ADDED
     });
 
     const populatedClass = await Class.findById(classItem._id)
@@ -153,35 +139,36 @@ router.put('/:id', protect, trainerOrAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // Trainers can only update their own classes, admins can update any
     if (req.user.role === 'trainer' && classItem.trainer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to update this class' });
     }
 
     const {
       className, batch, trainer, date, startTime, endTime,
-      teamsLink, recordingLink, recordings, status, description
+      teamsLink, recordingLink, recordings, status, description,
+      classType  // ← ADDED
     } = req.body;
 
     classItem.className = className || classItem.className;
     classItem.batch = batch || classItem.batch;
-    
-    // Only admins can change the trainer
+
     if (req.user.role === 'admin' && trainer) {
       classItem.trainer = trainer;
     }
-    
+
     classItem.date = date || classItem.date;
     classItem.startTime = startTime || classItem.startTime;
     classItem.endTime = endTime || classItem.endTime;
     classItem.teamsLink = teamsLink || classItem.teamsLink;
     classItem.recordingLink = recordingLink !== undefined ? recordingLink : classItem.recordingLink;
-    // recordings array: only update if explicitly passed
+
     if (recordings !== undefined) {
       classItem.recordings = recordings;
     }
+
     classItem.status = status || classItem.status;
     classItem.description = description !== undefined ? description : classItem.description;
+    classItem.classType = classType || classItem.classType;  // ← ADDED
 
     const updatedClass = await classItem.save();
 
@@ -206,7 +193,6 @@ router.delete('/:id', protect, trainerOrAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // Trainers can only delete their own classes, admins can delete any
     if (req.user.role === 'trainer' && classItem.trainer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this class' });
     }
