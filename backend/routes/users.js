@@ -10,7 +10,7 @@ const router = express.Router();
 // @access  Private/Admin
 router.post('/register', protect, adminOnly, async (req, res) => {
   try {
-    const { name, email, password, role, batch } = req.body;
+    const { name, email, password, role, batch, parentPhone } = req.body;
 
     // Check if user already exists
     const userExists = await User.findOne({ email });
@@ -25,6 +25,7 @@ router.post('/register', protect, adminOnly, async (req, res) => {
       password,
       role: role || 'learner',
       batch: batch || null,
+      parentPhone: parentPhone || '',
     });
 
     // If batch is provided and user is a learner, add to batch's students array
@@ -42,6 +43,7 @@ router.post('/register', protect, adminOnly, async (req, res) => {
       email: user.email,
       role: user.role,
       batch: user.batch,
+      parentPhone: user.parentPhone,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -117,7 +119,7 @@ router.put('/:id', protect, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this user' });
     }
 
-    const { name, email, phone, subject, batch, profileImage } = req.body;
+    const { name, email, phone, subject, batch, profileImage, parentPhone } = req.body;
 
     user.name = name || user.name;
     user.email = email || user.email;
@@ -125,6 +127,7 @@ router.put('/:id', protect, async (req, res) => {
     user.subject = subject || user.subject;
     user.batch = batch || user.batch;
     user.profileImage = profileImage || user.profileImage;
+    user.parentPhone = parentPhone !== undefined ? parentPhone : user.parentPhone;
 
     const updatedUser = await user.save();
 
@@ -137,6 +140,7 @@ router.put('/:id', protect, async (req, res) => {
       subject: updatedUser.subject,
       batch: updatedUser.batch,
       profileImage: updatedUser.profileImage,
+      parentPhone: updatedUser.parentPhone,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

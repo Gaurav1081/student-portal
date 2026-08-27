@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap, PlayCircle, Link, Menu, ChevronDown, ChevronUp, KeyRound } from "lucide-react";
+import { Users, BookOpen, Video, Calendar, Plus, Edit2, Trash2, Settings, UserCheck, ExternalLink, X, Save, Loader, LogOut, Search, UserPlus, Eye, EyeOff, GraduationCap, PlayCircle, Link, Menu, ChevronDown, ChevronUp, KeyRound, MessageCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import config from "../../config";
@@ -80,6 +80,9 @@ const globalStyles = `
 
 .ad-icon-key { color:#7c3aed; background:#f5f3ff; border-color:#c4b5fd; }
 .ad-icon-key:hover { border-color:#0a0a0a; }
+
+.ad-icon-whatsapp { color:#25D366; background:#e9fbf0; border-color:#b7f5cd; }
+.ad-icon-whatsapp:hover { border-color:#0a0a0a; }
 
 .ad-settings-btn {
   position:relative; overflow:hidden;
@@ -277,6 +280,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [batchSearchQuery, setBatchSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [classCreationType, setClassCreationType] = useState("single");
@@ -612,7 +616,7 @@ export default function AdminDashboard() {
   };
   const handleAddStudent = (batch) => {
     setModalType("addStudent"); setSelectedItem(batch);
-    setFormData({ name: "", email: "", password: "" });
+    setFormData({ name: "", email: "", password: "", parentPhone: "" });
     setError(""); setSearchQuery(""); setShowModal(true);
   };
   const handleSaveNewStudent = async () => {
@@ -676,6 +680,33 @@ export default function AdminDashboard() {
     } catch (error) { setChangePassError(error.message || "Failed to update password"); } finally { setSubmitting(false); }
   };
 
+  // ── Send absent alert via WhatsApp ──────────────────────────────────────────
+  const handleSendAbsentMessage = (student, batch) => {
+  if (!student.parentPhone) {
+    alert(`No parent phone number saved for ${student.name}. Add one by editing this student.`);
+    return;
+  }
+  let phone = student.parentPhone.replace(/\D/g, '');
+  if (phone.length === 10) phone = '91' + phone; // default India country code
+
+  const today = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+
+  const message =
+`Dear Parent,
+
+This is to inform you that *${student.name}* was absent from the *${batch?.name || 'class'}* class today (${today}).
+
+Please ensure regular attendance.
+
+Regards,
+Cinematics Creative Academy`;
+
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
+};
+
   // ── Trainer handlers ────────────────────────────────────────────────────────
   const handleCreateTrainer = () => {
     setModalType("trainer"); setSelectedItem(null);
@@ -729,6 +760,10 @@ export default function AdminDashboard() {
     const q = searchQuery.toLowerCase();
     return t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) || (t.subject && t.subject.toLowerCase().includes(q));
   });
+  const filteredBatchesForStudents = batches.filter(b => {
+  const q = batchSearchQuery.toLowerCase();
+  return b.name.toLowerCase().includes(q) || (b.subject || "").toLowerCase().includes(q);
+});
 
   const allRecordingClasses = classes.filter(cls => hasAnyRecording(cls)).sort((a, b) => new Date(b.date) - new Date(a.date));
   const totalRecordingParts = allRecordingClasses.reduce((sum, cls) => sum + getClassRecordings(cls).length, 0);
@@ -1106,10 +1141,23 @@ export default function AdminDashboard() {
         )}
 
         {/* Students Tab */}
-        {activeTab === "students" && (
-          <div className="space-y-4 sm:space-y-6">
+              {activeTab === "students" && (
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Student Management</h3>
-            {batches.map((batch) => (
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#555555]" size={18} />
+              <input
+                type="text"
+                placeholder="Search batches..."
+                value={batchSearchQuery}
+                onChange={(e) => setBatchSearchQuery(e.target.value)}
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className="ad-input w-full pl-10 pr-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white text-sm"
+              />
+            </div>
+          </div>
+          {filteredBatchesForStudents.map((batch) => (
               <div key={batch._id} className="bg-white rounded-xl p-4 sm:p-6 shadow-md border-2 border-[#e8e8e8]">
                 <div className="flex flex-col gap-3 mb-4">
                   <div>
@@ -1146,6 +1194,13 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <button
+                              onClick={() => handleSendAbsentMessage(student, batch)}
+                              className="ad-icon-btn ad-icon-whatsapp"
+                              title="Send Absent Alert"
+                            >
+                              <MessageCircle size={15} />
+                            </button>
+                              <button
                                 onClick={() => handleOpenChangePassword(student)}
                                 className="ad-icon-btn ad-icon-key"
                                 title="Change Password"
@@ -1167,10 +1222,12 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
-            {batches.length === 0 && (
+           {filteredBatchesForStudents.length === 0 && (
               <div className="bg-white rounded-xl p-12 text-center border-2 border-[#e8e8e8]">
                 <Users className="mx-auto h-12 w-12 text-[#555555] mb-4" />
-                <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">No batches available</p>
+                <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-[#555555]">
+                  {batchSearchQuery ? "No batches match your search" : "No batches available"}
+                </p>
               </div>
             )}
           </div>
@@ -1834,6 +1891,12 @@ export default function AdminDashboard() {
                 <input type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   style={{ fontFamily: 'Poppins, sans-serif' }}
                   className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="student@example.com" />
+              </div>
+              <div>
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Parent's WhatsApp Number</label>
+                <input type="tel" value={formData.parentPhone || ""} onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., 9876543210" />
               </div>
               <div>
                 <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Password *</label>

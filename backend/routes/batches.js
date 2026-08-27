@@ -13,7 +13,7 @@ router.get('/', protect, async (req, res) => {
   try {
     const batches = await Batch.find({})
       .populate('trainer', 'name email subject')
-      .populate('students', 'name email');
+      .populate('students', 'name email parentPhone');
     res.json(batches);
   } catch (error) {
     console.error('Error fetching batches:', error);
@@ -33,7 +33,7 @@ router.get('/:id', protect, async (req, res) => {
 
     const batch = await Batch.findById(req.params.id)
       .populate('trainer', 'name email subject')
-      .populate('students', 'name email');
+      .populate('students', 'name email parentPhone');
 
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -117,7 +117,7 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
     const populatedBatch = await Batch.findById(updatedBatch._id)
       .populate('trainer', 'name email subject')
-      .populate('students', 'name email');
+      .populate('students', 'name email parentPhone');
 
     res.json(populatedBatch);
   } catch (error) {
@@ -201,7 +201,7 @@ router.put('/:id/add-students', protect, adminOnly, async (req, res) => {
 
     const populatedBatch = await Batch.findById(batch._id)
       .populate('trainer', 'name email subject')
-      .populate('students', 'name email');
+      .populate('students', 'name email parentPhone');
 
     res.json(populatedBatch);
   } catch (error) {
@@ -265,7 +265,7 @@ router.put('/:id/sync-students', protect, adminOnly, async (req, res) => {
 
     const populatedBatch = await Batch.findById(batch._id)
       .populate('trainer', 'name email subject')
-      .populate('students', 'name email');
+      .populate('students', 'name email parentPhone');
 
     res.json(populatedBatch);
   } catch (error) {
