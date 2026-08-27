@@ -765,6 +765,25 @@ Cinematics Creative Academy`;
   return b.name.toLowerCase().includes(q) || (b.subject || "").toLowerCase().includes(q);
 });
 
+const handleEditStudent = (student) => {
+  setModalType("editStudent"); setSelectedItem(student);
+  setFormData({ name: student.name || "", email: student.email || "", parentPhone: student.parentPhone || "" });
+  setError(""); setShowModal(true);
+};
+
+const handleSaveEditStudent = async () => {
+  setSubmitting(true); setError("");
+  if (!formData.name || !formData.email) { setError("Name and email are required"); setSubmitting(false); return; }
+  try {
+    const response = await fetch(`${API_URL}/users/${selectedItem._id}`, {
+      method: 'PUT', headers: getAuthHeaders(),
+      body: JSON.stringify({ name: formData.name, email: formData.email, parentPhone: formData.parentPhone })
+    });
+    if (!response.ok) { const e = await response.json(); throw new Error(e.message || 'Failed to update student'); }
+    setShowModal(false); alert("Student updated successfully!"); fetchDashboardData();
+  } catch (error) { setError(error.message || "Failed to update student"); } finally { setSubmitting(false); }
+};
+
   const allRecordingClasses = classes.filter(cls => hasAnyRecording(cls)).sort((a, b) => new Date(b.date) - new Date(a.date));
   const totalRecordingParts = allRecordingClasses.reduce((sum, cls) => sum + getClassRecordings(cls).length, 0);
   const recordingsByTrainer = trainers.map(trainer => ({
@@ -1193,6 +1212,7 @@ Cinematics Creative Academy`;
                               <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555] truncate">{student.email}</p>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
+                              
                               <button
                               onClick={() => handleSendAbsentMessage(student, batch)}
                               className="ad-icon-btn ad-icon-whatsapp"
@@ -1200,6 +1220,15 @@ Cinematics Creative Academy`;
                             >
                               <MessageCircle size={15} />
                             </button>
+
+                              <button
+                                onClick={() => handleEditStudent(student)}
+                                className="ad-icon-btn"
+                                title="Edit Student"
+                              >
+                                <Edit2 size={15} />
+                              </button>
+
                               <button
                                 onClick={() => handleOpenChangePassword(student)}
                                 className="ad-icon-btn ad-icon-key"
@@ -1913,6 +1942,49 @@ Cinematics Creative Academy`;
                 <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
                 <button onClick={handleSaveNewStudent} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn disabled:opacity-50 order-1 sm:order-2">
                   {submitting ? <><Loader className="animate-spin" size={18} /><span>Creating...</span></> : <><UserPlus size={18} /><span>Create Student</span></>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Student Modal ──────────────────────────────────────────────── */}
+      {showModal && modalType === "editStudent" && (
+        <div className="fixed inset-0 bg-[#0a0a0a] bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl p-5 sm:p-6 w-full sm:max-w-md border-2 border-[#e8e8e8] max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }} className="text-lg sm:text-xl text-[#0a0a0a]">Edit Student</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[#f5f5f5] rounded-lg"><X size={20} /></button>
+            </div>
+            <div className="mb-4 p-3 bg-[#f5f5f5] border border-[#e8e8e8] rounded-lg">
+              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-sm font-semibold text-[#0a0a0a]">{selectedItem?.name}</p>
+              <p style={{ fontFamily: 'Poppins, sans-serif' }} className="text-xs text-[#555555]">{selectedItem?.email}</p>
+            </div>
+            {error && <div style={{ fontFamily: 'Poppins, sans-serif' }} className="mb-4 p-3 bg-[#E8001C] text-white rounded-lg text-sm">{error}</div>}
+            <div className="space-y-4">
+              <div>
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Name *</label>
+                <input type="text" value={formData.name || ""} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., John Doe" />
+              </div>
+              <div>
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Email *</label>
+                <input type="email" value={formData.email || ""} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="student@example.com" />
+              </div>
+              <div>
+                <label style={{ fontFamily: 'Poppins, sans-serif' }} className="block text-sm font-medium text-[#0a0a0a] mb-1">Parent's WhatsApp Number</label>
+                <input type="tel" value={formData.parentPhone || ""} onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] bg-white focus:border-[#E8001C] focus:outline-none" placeholder="e.g., 9876543210" />
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+                <button onClick={() => setShowModal(false)} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="px-4 py-2 border-2 border-[#e8e8e8] rounded-lg text-[#0a0a0a] hover:bg-[#f5f5f5] order-2 sm:order-1">Cancel</button>
+                <button onClick={handleSaveEditStudent} disabled={submitting} style={{ fontFamily: 'Poppins, sans-serif' }} className="ad-btn disabled:opacity-50 order-1 sm:order-2">
+                  {submitting ? <><Loader className="animate-spin" size={18} /><span>Updating...</span></> : <><Save size={18} /><span>Update</span></>}
                 </button>
               </div>
             </div>
